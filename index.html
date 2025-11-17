@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird JS</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+   
+    <div id="menuScreen" class="screen active">
+        <video id="menuBgVideo" autoplay loop muted playsinline>
+          
+            <source src="assets/videos/menu_bg.mp4" type="video/mp4">
+            Trình duyệt của bạn không hỗ trợ thẻ video.
+        </video>
+        <div class="menu-content">
+            <h1>Flappy Bird Clone</h1>
+            <button id="playButton">Play Game</button>
+          
+        </div>
+    </div>
+
+    <div id="gameScreen" class="screen">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <button id="pauseButton" class="game-button">Pause</button>
+        <div id="scoreDisplay" class="score-display">Score: 0</div>
+
+        <div id="pauseOverlay" class="overlay">
+            <h2>Game Paused</h2>
+            <button id="resumeButton" class="overlay-button">Resume</button>
+            <button id="exitToMenuButton" class="overlay-button">Exit to Menu</button>
+        </div>
+        
+        <div id="gameOverOverlay" class="overlay">
+            <h2>Game Over!</h2>
+            <p>Score: <span id="finalScore">0</span></p>
+            <button id="retryButton" class="overlay-button">Retry</button>
+            <button id="gameOverExitButton" class="overlay-button">Exit to Menu</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
