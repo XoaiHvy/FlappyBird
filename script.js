@@ -12,14 +12,15 @@ const gameOverExitButton = document.getElementById('gameOverExitButton');
 const scoreDisplay = document.getElementById('scoreDisplay');
 const finalScoreDisplay = document.getElementById('finalScore');
 const menuBgVideo = document.getElementById('menuBgVideo');
+const gameBgVideo = document.getElementById('gameBgVideo');
 
 // canvas n context
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // size game
-const GAME_WIDTH = canvas.width;
-const GAME_HEIGHT = canvas.height;
+let GAME_WIDTH = canvas.width;
+let GAME_HEIGHT = canvas.height;
 
 // in game
 let gameRunning = false;
@@ -35,9 +36,19 @@ let birdY = GAME_HEIGHT / 1 - BIRD_HEIGHT / 1;
 let birdVelocityY = 2;
 const GRAVITY = 0.1;
 const JUMP_STRENGTH = -3;
+// Bird animation state
+let birdAngle = 0; 
+const MAX_UP_ANGLE = -25;   
+const MAX_DOWN_ANGLE = 80;  
+const ANGLE_LERP = 0.12;    
 
-// Hitbox config 
-const DEBUG_HITBOX = true; 
+let flapTimer = 0;         
+const FLAP_DURATION = 200;  
+const FLAP_SCALE_X = 1.05;  
+const FLAP_SCALE_Y = 0.9;   
+
+// hitbox fix
+const DEBUG_HITBOX = false; 
 const BIRD_HITBOX_INSET = { x: 6, y: 4 }; 
 const PIPE_HITBOX_INSET = { x: 2, y: 2 };  
 
@@ -54,7 +65,6 @@ const assets = {
     bird: new Image(),
     pipeTop: new Image(),
     pipeBottom: new Image(),
-    gameBg: new Image(),
 };
 
 function loadAssets() {
@@ -81,34 +91,52 @@ function loadAssets() {
         assets.pipeBottom.onload = assetLoaded;
         assets.pipeBottom.onerror = () => console.error("Failed to load pipe_bottom.png");
 
-        assets.gameBg.src = 'assets/images/game_bg.png';
-        assets.gameBg.onload = assetLoaded;
-        assets.gameBg.onerror = () => console.error("Failed to load game_bg.png");
+        
     });
 }
 
-// ---- Game Logic Functions ----
+// game logic
+function resizeGame() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+
+    canvas.width = Math.max(1, Math.floor(w * dpr));
+    canvas.height = Math.max(1, Math.floor(h * dpr));
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    GAME_WIDTH = canvas.width / dpr;
+    GAME_HEIGHT = canvas.height / dpr;
+}
+
+window.addEventListener('resize', resizeGame);
+resizeGame();
 
 function startGame() {
-    // menu
+    
     menuScreen.classList.remove('active');
     gameScreen.classList.add('active');
 
-    // Reset 
+    resizeGame();
     resetGame();
 
     gameRunning = true;
     isPaused = false;
     isGameOver = false;
   
-    menuBgVideo.pause();
+    menuBgVideo.pause();         
+    gameBgVideo.currentTime = 0; 
+    gameBgVideo.play();          
 
     canvas.addEventListener('click', jump);
-    document.addEventListener('keydown', handleKeyPress); // Lắng nghe phím cách
+    document.addEventListener('keydown', handleKeyPress); 
 
     gameLoop();
 }
-
 function resetGame() {
     birdY = GAME_HEIGHT / 2 - BIRD_HEIGHT / 2;
     birdVelocityY = 0;
@@ -124,9 +152,11 @@ function resetGame() {
 function jump() {
     if (!isPaused && !isGameOver) {
         birdVelocityY = JUMP_STRENGTH;
+
+        flapTimer = 0;
+        birdAngle = MAX_UP_ANGLE;
     }
 }
-
 function handleKeyPress(event) {
     if (event.code === 'Space' && !isPaused && !isGameOver) {
         jump();
@@ -137,8 +167,7 @@ function handleKeyPress(event) {
 function spawnPipe() {
     const minHeight = 50;
     const maxHeight = GAME_HEIGHT - PIPE_GAP_HEIGHT - 50;
-    const gapY = Math.random() * (maxHeight - minHeight) + minHeight; // Vị trí Y của khoảng trống
-
+    const gapY = Math.random() * (maxHeight - minHeight) + minHeight; 
     pipes.push({
         x: GAME_WIDTH,
         y: 0,
@@ -171,6 +200,12 @@ function update() {
 
     birdVelocityY += GRAVITY;
     birdY += birdVelocityY;
+  
+    const velocityTargetAngle = Math.max(Math.min(birdVelocityY * 7, MAX_DOWN_ANGLE), MAX_UP_ANGLE);
+
+    birdAngle += (velocityTargetAngle - birdAngle) * ANGLE_LERP;
+
+    flapTimer += (typeof delta === 'number' ? delta : 16.67);
 
     if (birdY < 0 || birdY + BIRD_HEIGHT > GAME_HEIGHT) {
         gameOver();
@@ -217,14 +252,15 @@ if (rectsIntersect(birdRect, pipeRect)) {
     pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
 }
 
+// ...existing code...
+
 function draw() {
- 
+    // Xóa toàn bộ canvas
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    ctx.drawImage(assets.gameBg, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+    // (Nếu dùng video background, video nằm dưới canvas — không vẽ background ở đây)
 
-    ctx.drawImage(assets.bird, birdX, birdY, BIRD_WIDTH, BIRD_HEIGHT);
-
+    // Vẽ pipes trước chim (để chim nằm trên)
     for (let i = 0; i < pipes.length; i++) {
         let pipe = pipes[i];
         if (pipe.type === 'top') {
@@ -233,7 +269,27 @@ function draw() {
             ctx.drawImage(assets.pipeBottom, pipe.x, pipe.y, pipe.width, pipe.height);
         }
     }
-}
+
+    // Vẽ chim với rotation + flap (squash/stretch)
+    ctx.save();
+    const cx = birdX + BIRD_WIDTH / 2;
+    const cy = birdY + BIRD_HEIGHT / 2;
+    ctx.translate(cx, cy);
+    ctx.rotate((birdAngle * Math.PI) / 180);
+
+    let scaleX = 1, scaleY = 1;
+    if (flapTimer < FLAP_DURATION) {
+        const t = flapTimer / FLAP_DURATION;
+        const ease = 1 - Math.pow(1 - t, 2);
+        scaleX = 1 + (FLAP_SCALE_X - 1) * (1 - ease);
+        scaleY = 1 - (1 - FLAP_SCALE_Y) * (1 - ease);
+    }
+
+    ctx.scale(scaleX, scaleY);
+    ctx.drawImage(assets.bird, -BIRD_WIDTH / 2, -BIRD_HEIGHT / 2, BIRD_WIDTH, BIRD_HEIGHT);
+    ctx.restore();
+
+    // Debug: vẽ hitbox nếu bật
     if (DEBUG_HITBOX) {
         // bird hitbox
         ctx.strokeStyle = 'rgba(255,0,0,0.9)';
@@ -255,6 +311,11 @@ function draw() {
             ctx.strokeRect(px, py, pw, ph);
         }
     }
+}
+
+// ...existing code...
+
+let rafId = null;
 
 function gameLoop() {
     if (!gameRunning) return;
@@ -262,7 +323,7 @@ function gameLoop() {
     update();
     draw();
 
-    requestAnimationFrame(gameLoop);
+    rafId = requestAnimationFrame(gameLoop);
 }
 
 function gameOver() {
@@ -270,6 +331,7 @@ function gameOver() {
     gameRunning = false; 
     finalScoreDisplay.textContent = score;
     gameOverOverlay.classList.add('visible');
+    gameBgVideo.pause();
     
     canvas.removeEventListener('click', jump);
     document.removeEventListener('keydown', handleKeyPress);
@@ -278,21 +340,39 @@ function gameOver() {
 function togglePause() {
     if (isGameOver) return; 
 
-    isPaused = !isPaused;
-    if (isPaused) {
+    if (!isPaused) {
+     
+        isPaused = true;
         pauseOverlay.classList.add('visible');
-       
+
+        if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+        }
+
+        try { if (typeof gameBgVideo !== 'undefined' && gameBgVideo) gameBgVideo.pause(); } catch (e) {}
+
+        canvas.removeEventListener('click', jump);
+        document.removeEventListener('keydown', handleKeyPress);
     } else {
+        // -> resume
+        isPaused = false;
         pauseOverlay.classList.remove('visible');
-        gameLoop(); 
+
+        canvas.addEventListener('click', jump);
+        document.addEventListener('keydown', handleKeyPress);
+
+        try { if (typeof gameBgVideo !== 'undefined' && gameBgVideo) gameBgVideo.play().catch(()=>{}); } catch (e) {}
+
+        if (!rafId && gameRunning) {
+            gameLoop();
+        }
     }
 }
 
 function resumeGame() {
     if (isGameOver) return;
-    isPaused = false;
-    pauseOverlay.classList.remove('visible');
-    gameLoop();
+    if (isPaused) togglePause(); 
 }
 
 function exitGameToMenu() {
@@ -311,12 +391,42 @@ function exitGameToMenu() {
 }
 
 
+
 // ---- Event Listeners ----
 playButton.addEventListener('click', startGame);
-pauseButton.addEventListener('click', togglePause);
+pauseButton.addEventListener('click', (e) => {
+    // Ngăn chặn sự kiện nổi bọt (đề phòng)
+    e.stopPropagation(); 
+    console.log("Pause button clicked!"); // Kiểm tra trong Console (F12) xem có hiện dòng này không
+    togglePause();
+});
+
+// Đảm bảo nút này không bị focus "ăn trộm" phím Space
+pauseButton.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        e.preventDefault(); // Ngăn nút pause bị kích hoạt khi nhấn Space để nhảy
+    }
+});
 resumeButton.addEventListener('click', resumeGame);
 exitToMenuButton.addEventListener('click', exitGameToMenu);
 retryButton.addEventListener('click', startGame); 
 gameOverExitButton.addEventListener('click', exitGameToMenu);
 
-window.onload = loadAssets;
+
+window.onload = async () => {
+    await loadAssets();
+
+    menuBgVideo.src = 'assets/images/videos/menu_bg.mp4';
+    menuBgVideo.loop = true;
+    menuBgVideo.muted = true;      
+    menuBgVideo.playsInline = true;
+    gameBgVideo.src = 'assets/images/videos/game_bg.mp4'; 
+    gameBgVideo.loop = true;
+    gameBgVideo.muted = true;
+    gameBgVideo.playsInline = true;
+
+    menuBgVideo.play().catch(() => {
+        
+        console.warn('Menu background video autoplay was blocked; it will play after user interaction.');
+    });
+};

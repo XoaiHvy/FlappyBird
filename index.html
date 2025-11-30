@@ -1,42 +1,79 @@
+<!-- ...existing code... -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flappy Bird JS</title>
+    <title>Flappy Bird JS - Berserk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Aldrich&family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-   
     <div id="menuScreen" class="screen active">
         <video id="menuBgVideo" autoplay loop muted playsinline>
-          
             <source src="assets/videos/menu_bg.mp4" type="video/mp4">
-            Trình duyệt của bạn không hỗ trợ thẻ video.
         </video>
+        <div class="menu-overlay"></div>
         <div class="menu-content">
-            <h1>Flappy Bird Clone</h1>
-            <button id="playButton">Play Game</button>
-          
+            <div class="menu-left">
+                <h1 class="menu-title">BERSERK</h1>
+                <nav class="menu-nav">
+                    <button id="playButton" class="menu-btn large">Play</button>
+                    <button id="collectionButton" class="menu-btn">Collection</button>
+                    <button id="profileButton" class="menu-btn">Profile</button>
+                    <button id="exitButton" class="menu-btn">Exit</button>
+                </nav>
+            </div>
+            <div class="menu-right">
+                <div class="top-right-elements">
+                    <span class="quest-indicator">QUESTS</span>
+                </div>
+                <div class="booster-packs">0 BOOSTER PACKS</div>
+            </div>
         </div>
     </div>
 
     <div id="gameScreen" class="screen">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <button id="pauseButton" class="game-button">Pause</button>
+        <video id="gameBgVideo" loop muted playsinline>
+            <source src="assets/videos/game_bg.mp4" type="video/mp4">
+        </video>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <button id="pauseButton" class="game-button" aria-label="Pause">
+            <svg class="pause-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+                <rect x="6" y="5" width="4" height="14" rx="1.5"></rect>
+                <rect x="14" y="5" width="4" height="14" rx="1.5"></rect>
+            </svg>
+        </button>
+
         <div id="scoreDisplay" class="score-display">Score: 0</div>
 
+        <!-- pause overlay (single copy) -->
         <div id="pauseOverlay" class="overlay">
-            <h2>Game Paused</h2>
-            <button id="resumeButton" class="overlay-button">Resume</button>
-            <button id="exitToMenuButton" class="overlay-button">Exit to Menu</button>
+            <div class="pause-panel">
+                <h2>Paused</h2>
+                <ul class="pause-menu" role="menu" aria-label="Pause menu">
+                    <li><button id="resumeButton" class="pause-item" role="menuitem">Resume Game</button></li>
+                    <li><button id="exitToMenuButton" class="pause-item" role="menuitem">Back to Main Menu</button></li>
+                </ul>
+                <p class="pause-hint">Press <kbd>Esc</kbd> to resume</p>
+            </div>
         </div>
-        
+
+        <!-- game over overlay (single copy) -->
         <div id="gameOverOverlay" class="overlay">
-            <h2>Game Over!</h2>
-            <p>Score: <span id="finalScore">0</span></p>
-            <button id="retryButton" class="overlay-button">Retry</button>
-            <button id="gameOverExitButton" class="overlay-button">Exit to Menu</button>
+              <div class="gameover-wrap">
+    <div class="gameover-title">
+        <span class="go-line go-game">WHY YOU</span>
+      <span class="go-line go-over"> SO NOOB?</span>
+      <div class="gameover-actions"></div>
+         <button id="retryButton" class="go-btn">Continue</button>
+      <button id="gameOverExitButton" class="go-btn secondary">Exit to Menu</button>
+            <div class="final-score">Score: <span id="finalScore">0</span></div>
+            
         </div>
     </div>
 

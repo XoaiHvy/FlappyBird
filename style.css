@@ -1,133 +1,426 @@
 body {
     margin: 0;
-    overflow: hidden; 
-    font-family: Arial, sans-serif;
-    background-color: #333;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+    overflow: hidden;
+    font-family: 'Exo 2', sans-serif;
+    background-color: #1a1a1a;
 }
 
 .screen {
-    position: absolute;
-    width: 800px;
-    height: 600px;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
     background-color: #000;
-    display: none; 
+    display: none;
     justify-content: center;
     align-items: center;
     flex-direction: column;
     color: white;
-    border: 2px solid #555;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    border: none; 
+    box-shadow: none;
+    overflow: hidden;
 }
 
 .screen.active {
-    display: flex; 
-}
-
-/* --- Menu Screen Styles --- */
-#menuScreen {
-    overflow: hidden;
+    display: flex;
 }
 
 #menuBgVideo {
     position: absolute;
     top: 50%;
     left: 50%;
-    min-width: 100%;
-    min-height: 100%;
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 100%;
     z-index: 0;
     transform: translate(-50%, -50%);
-    background-size: cover;
+    object-fit: cover;
+}
+
+
+.menu-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.1) 60%, rgba(0,0,0,0.9) 100%);
+    
+    z-index: 1;
+    pointer-events: none; 
 }
 
 .menu-content {
     position: relative;
-    z-index: 1;
-    text-align: center;
+    z-index: 2; 
+    width: 100%;
+    height: 100%;
+    display: flex;
+    
+    justify-content: flex-start; 
+    padding: 30px; 
+    box-sizing: border-box; 
 }
 
-.menu-content h1 {
-    font-family: 'Impact', sans-serif;
-    font-size: 72px;
-    color: white;
-    text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.7);
-    margin-bottom: 40px;
+.menu-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; 
+    align-items: flex-start; 
+    
+    position: relative;
+    padding-top: 20px; 
+    padding-bottom: 20px; 
 }
 
-#playButton,
-.game-button,
-.overlay-button {
-    background-color: #4CAF50; /* Green */
-    color: white;
-    padding: 15px 30px;
-    font-size: 24px;
+.menu-title {
+    font-family: 'Aldrich', sans-serif; 
+    font-size: 5.5em; 
+    color: #f0f0f0; 
+    
+    text-shadow: 0 0 15px rgba(78, 205, 196, 0.9), /* Glow light blue mạnh hơn */
+                 0 0 30px rgba(78, 205, 196, 0.7),
+                 0 0 50px rgba(78, 205, 196, 0.5),
+                 0 0 70px rgba(78, 205, 196, 0.3); /* Thêm nhiều lớp shadow để làm sáng rõ hơn */
+    letter-spacing: 2px; /* Khoảng cách chữ */
+    margin: 0; /* Loại bỏ margin mặc định */
+    line-height: 0.9; /* Giảm khoảng cách dòng */
+    background: none; /* Đảm bảo không có nền */
+}
+
+.menu-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px; /* Khoảng cách giữa các nút */
+    margin-top: auto; /* Đẩy nav xuống dưới cùng của menu-left */
+}
+
+.menu-btn {
+    background: transparent; /* nền trong suốt */
+    color: #9ef0e0; /* màu chữ chính */
     border: none;
-    border-radius: 8px;
+    padding: 12px 25px;
+    font-size: 1.2em;
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border-radius: 0;
     cursor: pointer;
-    transition: background-color 0.3s ease;
-    margin: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease, color 0.2s ease, text-shadow 0.2s ease;
+    min-width: 180px;
+    text-align: left;
+    box-shadow: none; /* bỏ shadow nền */
+    position: relative;
+    overflow: visible;
+    /* chữ glow */
+    text-shadow:
+        0 0 6px rgba(158,240,224,0.9),
+        0 0 18px rgba(158,240,224,0.6),
+        0 0 36px rgba(80,220,200,0.25);
 }
 
-#playButton:hover,
-.game-button:hover,
-.overlay-button:hover {
-    background-color: #45a049;
+.menu-btn::before {
+    display: none;
 }
 
-/* --- Game Screen Styles --- */
-#gameScreen {
-    background-color: #87CEEB; 
-    position: relative; 
+.menu-btn:hover::before {
+    left: 100%;
 }
 
+.menu-btn:hover {
+    background: transparent;
+    transform: translateY(-3px); /* Hiệu ứng nhấc nhẹ lên */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+    color: #78d1c4; /* Màu chữ sáng hơn khi hover */
+}
+
+.menu-btn.large {
+    background: transparent;
+    font-size: 1.8em;
+    padding: 18px 35px;
+    min-width: 220px;
+    color: #a9ffd6;
+    text-shadow:
+        0 0 8px rgba(169,255,214,0.95),
+        0 0 24px rgba(169,255,214,0.8),
+        0 0 80px rgba(120,230,200,0.25);
+    box-shadow: none;
+}
+
+.menu-btn.large:hover {
+    transform: translateY(-6px) scale(1.02);
+    color: #ffffff;
+    text-shadow:
+        0 0 14px rgba(169,255,214,1),
+        0 0 40px rgba(169,255,214,0.95),
+        0 0 120px rgba(120,230,200,0.35);
+}
+
+/* Ẩn phần quest / booster nếu còn trong DOM */
+.booster-packs,
+.quest-indicator {
+    display: none !important;
+}
+
+/* --- Game Screen & Overlay Styles --- */
+#gameBgVideo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Giúp video lấp đầy màn hình mà không bị méo */
+    z-index: 0;        /* Nằm dưới cùng */
+}
+
+/* Chỉnh sửa lại #gameCanvas */
 #gameCanvas {
-    background-color: #ccc; 
+    position: relative; 
+    z-index: 1;             /* Nằm đè lên trên video */
+    background: transparent; /* QUAN TRỌNG: Để nhìn xuyên qua thấy video */
+    display: block;
 }
 
 #pauseButton {
+    background: rgba(0,0,0,0.45); /* nhẹ, trong suốt để thấy background video */
+    width: 48px;
+    height: 48px;
+    padding: 8px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.14s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     position: absolute;
     top: 20px;
     right: 20px;
-    padding: 10px 20px;
-    font-size: 18px;
-    z-index: 10; 
+    z-index: 10;
 }
 
+
+/* Hover / active */
+#pauseButton .pause-icon {
+    pointer-events: none; /* Rất quan trọng */
+    width: 22px;
+    height: 22px;
+    filter: drop-shadow(0 0 8px rgba(230, 120, 120, 0.25));
+}
+
+/* Tăng Z-Index lên cao hẳn để chắc chắn không bị Canvas che */
+#pauseButton {
+    /* Các thuộc tính cũ giữ nguyên */
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100; /* Tăng từ 10 lên 100 */
+    cursor: pointer;
+}
+#pauseButton:hover {
+    transform: translateY(-3px);
+    background: rgba(0,0,0,0.62);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+}
+
+#pauseButton:active {
+    transform: translateY(0);
+}
+
+/* SVG icon color / glow */
+#pauseButton .pause-icon rect {
+    fill: #ffffff;
+    opacity: 0.95;
+}
+
+#pauseButton .pause-icon {
+    width: 22px;
+    height: 22px;
+    filter: drop-shadow(0 0 8px rgba(120,230,200,0.25));
+}
+
+/* Optional: style for accessibility focus */
+#pauseButton:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(120,230,200,0.18), 0 6px 18px rgba(0,0,0,0.5);
+}
+/* ...existing code... */
+
+/* Pause overlay - cinematic centered panel with strong blur + vignette */
+#pauseOverlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+    pointer-events: none; /* enabled only when visible */
+    transition: opacity 240ms ease, visibility 240ms ease;
+    opacity: 0;
+    visibility: hidden;
+}
+
+#pauseOverlay.visible {
+    pointer-events: auto;
+    opacity: 1;
+    visibility: visible;
+}
+
+/* dim + strong blur + vignette */
+#pauseOverlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+
+    /* glass / blur effect thay vì nền đen:
+       - backdrop-filter thực hiện blur trên nội dung phía sau
+       - nền mờ rất nhẹ để tạo cảm giác "glass" (khoảng sáng nhẹ) */
+    background: rgba(255, 255, 255, 0.02); /* rất nhẹ, cho cảm giác mờ sáng */
+    backdrop-filter: blur(90px) saturate(120%) contrast(0.95) brightness(2);
+    -webkit-backdrop-filter: blur(10px) saturate(120%) contrast(0.95) brightness(0.9);
+
+    /* optional: nhẹ vignette ở rìa để vẫn giữ chiều sâu (giữ subtle) */
+    box-shadow: inset 0 60px 120px rgba(146, 27, 27, 0.25);
+
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* panel */
+.pause-panel {
+    position: relative;
+    z-index: 2;
+    width: min(560px, 92%);
+    padding: 28px 36px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(154, 68, 68, 0.55), rgba(12,12,12,0.38));
+    border: 1px solid rgba(255,255,255,0.04);
+    box-shadow:
+        0 34px 90px rgba(0,0,0,0.75),
+        inset 0 1px 0 rgba(255,255,255,0.02);
+    text-align: center;
+    backdrop-filter: blur(4px);
+}
+
+/* title */
+.pause-panel h2 {
+    margin: 0 0 18px;
+    font-size: 18px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #ff0000;
+    text-shadow: 0 8px 28px rgba(40,200,170,0.06);
+}
+
+/* menu list */
+.pause-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pause-menu li {
+    margin: 8px 0;
+    padding: 0;
+}
+
+/* menu buttons: transparent look, thin separators, glow on hover */
+.pause-item {
+    width: 100%;
+    text-align: center;
+    display: block;
+    background: transparent;
+    border: none;
+    color: #5e0505;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+    padding: 14px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform .14s ease, color .14s ease, box-shadow .18s ease, background .18s ease;
+    position: relative;
+    outline: none;
+}
+
+/* add thin separator under each item except last */
+.pause-menu li + li::before {
+    content: "";
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255, 0, 0, 0), rgba(255, 0, 0, 0));
+    transform: translateY(-8px);
+    pointer-events: none;
+}
+
+/* hover / focus: subtle glow and lift */
+.pause-item:hover,
+.pause-item:focus {
+    transform: translateY(-6px);
+    color: #ff0000;
+    box-shadow:
+        0 18px 48px rgb(255, 0, 0),
+        0 0 40px rgb(255, 0, 0);
+    background: linear-gradient(90deg, rgba(80,230,200,0.03), rgba(120,250,220,0.02));
+}
+
+/* hint line */
+.pause-hint {
+    margin-top: 14px;
+    color: rgba(255, 0, 0, 0.7);
+    font-size: 13px;
+}
+
+/* kbd styling */
+.pause-hint kbd {
+    background: rgba(255,255,255,0.03);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 0, 0, 0.03);
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2);
+    font-weight: 700;
+    color: #ff0000;
+    font-size: 12px;
+}
+
+/* make overlay and panel adapt on small screens */
+@media (max-width: 480px) {
+    .pause-panel { padding: 20px; width: calc(100% - 36px); }
+    .pause-item { font-size: 16px; padding: 12px; }
+}
 #scoreDisplay {
     position: absolute;
     top: 20px;
     left: 20px;
     font-size: 32px;
     font-weight: bold;
-    color: white;
-    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.7);
+    color: #000000;
+    text-shadow: 2px 2px 5px rgba(255, 0, 0, 0.7);
     z-index: 10;
 }
 
-/* --- Overlay Styles (Pause, Game Over) --- */
+/* Overlay (Pause, Game Over) */
 .overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.85); 
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    color: white;
+    color: #ffffff;
     text-align: center;
-    z-index: 20; 
-    visibility: hidden; 
+    z-index: 20;
+    visibility: hidden;
     opacity: 0;
-    transition: visibility 0s, opacity 0.3s linear;
+    transition: visibility 0s, opacity 0.4s linear;
+    backdrop-filter: blur(5px);
 }
 
 .overlay.visible {
@@ -136,36 +429,167 @@ body {
 }
 
 .overlay h2 {
-    font-size: 48px;
+    font-family: 'Aldrich', sans-serif;
+    font-size: 4em;
     margin-bottom: 30px;
-    font-family: 'Impact', sans-serif;
-    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.7);
+    color: #ff0000; 
+    text-shadow: 0 0 15px rgba(255, 0, 0, 0.7);
 }
 
 .overlay p {
-    font-size: 28px;
-    margin-bottom: 20px;
+    font-size: 1.8em;
+    margin-bottom: 25px;
+    color: #991818;
 }
 
 .overlay-button {
-    background-color: #007bff; /* Blue */
+    background: linear-gradient(to right, #ff0000, #ff0000);
+    color: rgb(255, 0, 0);
+    padding: 15px 30px;
+    font-size: 1.5em;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
 }
 
 .overlay-button:hover {
-    background-color: #0056b3;
+    background: linear-gradient(to right, #ff0000, #ff0000);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
 }
 
-#gameOverOverlay #retryButton {
-    background-color: #ffc107; /* Yellow */
-    color: #333;
-}
-#gameOverOverlay #retryButton:hover {
-    background-color: #e0a800;
+/* Game Over overlay styling (replace or append) */
+#gameOverOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 260ms ease, visibility 260ms ease;
 }
 
-#gameOverOverlay #gameOverExitButton {
-    background-color: #dc3545; /* Red */
+#gameOverOverlay.visible {
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
 }
-#gameOverOverlay #gameOverExitButton:hover {
-    background-color: #c82333;
+
+/* background vignette + subtle noise/dark red tint */
+#gameOverOverlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, rgba(40,10,10,0.12), rgba(10,4,4,0.5) 40%, rgba(0,0,0,0.85) 100%),
+    linear-gradient(180deg, rgba(60,8,8,0.06), rgba(20,6,6,0.12));
+  backdrop-filter: blur(6px) saturate(110%);
+  -webkit-backdrop-filter: blur(6px) saturate(110%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* centered panel wrapper (transparent so background shows through) */
+.gameover-wrap {
+  position: relative;
+  z-index: 2;
+  width: min(660px, 92%);
+  padding: 28px 26px;
+  text-align: center;
+  border-radius: 8px;
+  background: rgba(6,6,6,0.18); /* slight glass */
+  box-shadow: 0 40px 120px rgba(0,0,0,0.75);
+  color: #fff;
+}
+
+/* big title: GAME (white) OVER (red) */
+.gameover-title {
+  display: block;
+  margin-bottom: 26px;
+  line-height: 0.88;
+}
+
+.go-line {
+  display: block;
+  font-family: 'Aldrich', sans-serif;
+  font-size: clamp(42px, 9vw, 96px);
+  letter-spacing: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-shadow: 0 8px 30px rgba(0,0,0,0.6);
+}
+
+.go-game {
+  color: #8b0000;
+  margin-bottom: 6px;
+}
+
+.go-over {
+  color: #d82626;
+  text-shadow:
+    0 6px 18px rgba(216,38,38,0.28),
+    0 0 36px rgba(216,38,38,0.06);
+}
+
+/* Actions buttons */
+.gameover-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.go-btn {
+  min-width: 220px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  cursor: pointer;
+  transition: transform .14s ease, box-shadow .16s ease, background .16s ease;
+  text-transform: uppercase;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.55);
+}
+
+.go-btn.secondary {
+  background: transparent;
+  color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.04);
+  opacity: 0.9;
+  min-width: 200px;
+}
+
+/* hover effects */
+.go-btn:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 28px 80px rgba(200,30,30,0.08), 0 8px 30px rgba(0,0,0,0.5);
+  background: linear-gradient(180deg, rgba(255,60,60,0.04), rgba(255,255,255,0.02));
+}
+
+/* final score small line under buttons */
+.final-score {
+  margin-top: 6px;
+  color: rgba(255,255,255,0.85);
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-size: 14px;
+}
+
+/* responsive tweaks */
+@media (max-width: 520px) {
+  .gameover-wrap { padding: 18px; }
+  .go-btn { min-width: 160px; padding: 10px 14px; font-size: 14px; }
+  .go-line { font-size: clamp(30px, 11vw, 64px); }
 }
