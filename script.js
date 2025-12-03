@@ -13,6 +13,61 @@ const scoreDisplay = document.getElementById('scoreDisplay');
 const finalScoreDisplay = document.getElementById('finalScore');
 const menuBgVideo = document.getElementById('menuBgVideo');
 const gameBgVideo = document.getElementById('gameBgVideo');
+// --- DATA COLLECTION ---
+// bird
+const BIRD_SKINS = [
+    { id: 'bird_nightfury',     name: 'Night Fury',     src: 'assets/images/nightfury_bird.png' },
+    { id: 'bird_lightfury',     name: 'Light Fury',     src: 'assets/images/lightfury_bird.png' },
+    { id: 'bird_bewilderbeast', name: 'Bewilderbeast',  src: 'assets/images/bewilderbeast_bird.png' },
+    // Bạn có thể giữ con chim gốc nếu muốn
+    { id: 'bird_default',       name: 'Base Guts',       src: 'assets/images/bird.png' }
+];
+
+// map
+const MAP_SKINS = [
+    { id: 'map_eldenring',   name: 'Elden Ring',   src: 'assets/images/videos/eldenring_map.mp4' },
+    { id: 'map_starrynight', name: 'Starry Night', src: 'assets/images/videos/starrynight_map.mp4' },
+    { id: 'map_city',        name: 'Night City',         src: 'assets/images/videos/city_map.mp4' },
+    { id: 'map_default',     name: 'Berserk',      src: 'assets/images/videos/game_bg.mp4' },
+    { id: 'map_frozen',      name: 'Frozen Zerg',  src: 'assets/images/videos/frozen_map.mp4'}
+];
+const PIPE_SKINS = [
+    { 
+        id: 'pipe_default', 
+        name: 'Corpse of Berserk', 
+        top: 'assets/images/pipe_top.png', 
+        bottom: 'assets/images/pipe_bottom.png' 
+    },
+    { 
+        id: 'pipe_sword', 
+        name: 'Sword of Truth', 
+        top: 'assets/images/pipesword_top.png', 
+        bottom: 'assets/images/pipesword_bottom.png' 
+    },
+    { 
+        id: 'pipe_ice', 
+        name: 'Frozen Peak', 
+        top: 'assets/images/pipeice_top.png', 
+        bottom: 'assets/images/pipeice_bottom.png' 
+    },
+    { 
+        id: 'pipe_van', 
+        name: 'Vangogh', 
+        top: 'assets/images/pipevan_top.png', 
+        bottom: 'assets/images/pipevan_bottom.png' 
+    }
+];
+let currentBirdSrc = localStorage.getItem('selectedBirdSrc') || BIRD_SKINS[0].src;
+let currentMapSrc = localStorage.getItem('selectedMapSrc') || MAP_SKINS[0].src;
+let currentPipeId = localStorage.getItem('selectedPipeId') || 'pipe_default';
+
+// dom
+const collectionScreen = document.getElementById('collectionScreen');
+const collectionButton = document.getElementById('collectionButton'); // Nút ở menu chính
+const collectionBackBtn = document.getElementById('collectionBackBtn');
+const birdGrid = document.getElementById('birdGrid');
+const mapGrid = document.getElementById('mapGrid');
+const pipeGrid = document.getElementById('pipeGrid');
 
 // canvas n context
 const canvas = document.getElementById('gameCanvas');
@@ -27,6 +82,7 @@ let gameRunning = false;
 let isPaused = false;
 let isGameOver = false;
 let score = 0;
+
 
 // bird
 const BIRD_WIDTH = 60;
@@ -71,30 +127,27 @@ function loadAssets() {
     return new Promise((resolve) => {
         let loadedCount = 0;
         const totalAssets = Object.keys(assets).length;
-
         const assetLoaded = () => {
             loadedCount++;
-            if (loadedCount === totalAssets) {
-                resolve();
-            }
+            if (loadedCount === totalAssets) resolve();
         };
 
-        assets.bird.src = 'assets/images/bird.png';
+        
+        assets.bird.src = currentBirdSrc; 
+        
+        
         assets.bird.onload = assetLoaded;
-        assets.bird.onerror = () => console.error("Failed to load bird.png");
-
+        assets.bird.onerror = () => {
+            console.error("Lỗi load ảnh chim, dùng ảnh mặc định.");
+            assets.bird.src = 'assets/images/bird.png'; // Fallback
+        };
+const selectedPipe = PIPE_SKINS.find(p => p.id === currentPipeId) || PIPE_SKINS[0];
         assets.pipeTop.src = 'assets/images/pipe_top.png';
         assets.pipeTop.onload = assetLoaded;
-        assets.pipeTop.onerror = () => console.error("Failed to load pipe_top.png");
-
         assets.pipeBottom.src = 'assets/images/pipe_bottom.png';
         assets.pipeBottom.onload = assetLoaded;
-        assets.pipeBottom.onerror = () => console.error("Failed to load pipe_bottom.png");
-
-        
     });
 }
-
 // game logic
 function resizeGame() {
     const dpr = window.devicePixelRatio || 1;
@@ -251,16 +304,137 @@ if (rectsIntersect(birdRect, pipeRect)) {
 
     pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
 }
+function renderCollection() {
+    //render bird
+    birdGrid.innerHTML = '';
+    BIRD_SKINS.forEach(skin => {
+        const div = document.createElement('div');
+       
+        const isSelected = (skin.src === currentBirdSrc);
+        div.className = `skin-item ${isSelected ? 'selected' : ''}`;
+        
+        div.innerHTML = `
+            <img src="${skin.src}" class="skin-img" alt="${skin.name}">
+            <div class="skin-name">${skin.name}</div>
+        `;
+        
+        div.onclick = () => {
+            currentBirdSrc = skin.src;
+            localStorage.setItem('selectedBirdSrc', skin.src); 
+            assets.bird.src = skin.src; 
+            renderCollection(); 
+        };
+        birdGrid.appendChild(div);
+    });
 
-// ...existing code...
+    // render map
+    mapGrid.innerHTML = '';
+    MAP_SKINS.forEach(skin => {
+        const div = document.createElement('div');
+        const isSelected = (skin.src === currentMapSrc);
+        div.className = `skin-item ${isSelected ? 'selected' : ''}`;
+        
+        div.innerHTML = `
+            <video src="${skin.src}" class="map-preview" muted loop autoplay playsinline></video>
+            <div class="skin-name">${skin.name}</div>
+        `;
+
+        div.onclick = () => {
+            currentMapSrc = skin.src;
+            localStorage.setItem('selectedMapSrc', skin.src); 
+            
+            menuBgVideo.src = skin.src;
+            gameBgVideo.src = skin.src;
+            menuBgVideo.play().catch(()=>{});
+            
+            renderCollection();
+        };
+        mapGrid.appendChild(div);
+        // render pipe
+        pipeGrid.innerHTML = '';
+    PIPE_SKINS.forEach(skin => {
+        const div = document.createElement('div');
+       
+        const isSelected = (skin.id === currentPipeId);
+        div.className = `skin-item ${isSelected ? 'selected' : ''}`;
+        
+        div.innerHTML = `
+            <img src="${skin.bottom}" class="skin-img" style="height: 60px; object-fit: contain;" alt="${skin.name}">
+            <div class="skin-name">${skin.name}</div>
+        `;
+        
+        div.onclick = () => {
+            currentPipeId = skin.id;
+            localStorage.setItem('selectedPipeId', skin.id); 
+            
+            assets.pipeTop.src = skin.top;
+            assets.pipeBottom.src = skin.bottom;
+            
+            renderCollection(); 
+        };
+        pipeGrid.appendChild(div);
+    });
+    });
+}
+
+// on/off
+function openCollection() {
+    menuScreen.classList.remove('active');
+    collectionScreen.classList.add('active');
+    renderCollection(); 
+}
+
+function closeCollection() {
+    collectionScreen.classList.remove('active');
+    menuScreen.classList.add('active');
+
+    menuBgVideo.play().catch(()=>{}); 
+}
+function selectBird(id) {
+    currentBirdId = id;
+    localStorage.setItem('selectedBird', id); // save
+  
+    const skinData = BIRD_SKINS.find(s => s.id === id);
+    if (skinData) {
+        assets.bird.src = skinData.src;
+    }
+    
+    renderCollection(); 
+}
+
+function selectMap(id) {
+    currentMapId = id;
+    localStorage.setItem('selectedMap', id);
+    
+    const skinData = MAP_SKINS.find(s => s.id === id);
+    if (skinData) {
+        menuBgVideo.src = skinData.src;
+        gameBgVideo.src = skinData.src;
+        
+        menuBgVideo.load();
+        gameBgVideo.load();
+        menuBgVideo.play().catch(()=>{});
+    }
+
+    renderCollection();
+}
+
+function openCollection() {
+    menuScreen.classList.remove('active');
+    collectionScreen.classList.add('active');
+    renderCollection();
+}
+
+function closeCollection() {
+    collectionScreen.classList.remove('active');
+    menuScreen.classList.add('active');
+}
 
 function draw() {
-    // Xóa toàn bộ canvas
+    // clear
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    // (Nếu dùng video background, video nằm dưới canvas — không vẽ background ở đây)
-
-    // Vẽ pipes trước chim (để chim nằm trên)
+    // draw pipes 
     for (let i = 0; i < pipes.length; i++) {
         let pipe = pipes[i];
         if (pipe.type === 'top') {
@@ -270,7 +444,7 @@ function draw() {
         }
     }
 
-    // Vẽ chim với rotation + flap (squash/stretch)
+    // draw bird
     ctx.save();
     const cx = birdX + BIRD_WIDTH / 2;
     const cy = birdY + BIRD_HEIGHT / 2;
@@ -289,7 +463,7 @@ function draw() {
     ctx.drawImage(assets.bird, -BIRD_WIDTH / 2, -BIRD_HEIGHT / 2, BIRD_WIDTH, BIRD_HEIGHT);
     ctx.restore();
 
-    // Debug: vẽ hitbox nếu bật
+    // Debug
     if (DEBUG_HITBOX) {
         // bird hitbox
         ctx.strokeStyle = 'rgba(255,0,0,0.9)';
@@ -312,8 +486,6 @@ function draw() {
         }
     }
 }
-
-// ...existing code...
 
 let rafId = null;
 
@@ -395,25 +567,28 @@ function exitGameToMenu() {
 // ---- Event Listeners ----
 playButton.addEventListener('click', startGame);
 pauseButton.addEventListener('click', (e) => {
-    // Ngăn chặn sự kiện nổi bọt (đề phòng)
+   
     e.stopPropagation(); 
-    console.log("Pause button clicked!"); // Kiểm tra trong Console (F12) xem có hiện dòng này không
+    console.log("Pause button clicked!"); 
     togglePause();
 });
 
-// Đảm bảo nút này không bị focus "ăn trộm" phím Space
 pauseButton.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
-        e.preventDefault(); // Ngăn nút pause bị kích hoạt khi nhấn Space để nhảy
+        e.preventDefault(); 
     }
 });
 resumeButton.addEventListener('click', resumeGame);
 exitToMenuButton.addEventListener('click', exitGameToMenu);
 retryButton.addEventListener('click', startGame); 
 gameOverExitButton.addEventListener('click', exitGameToMenu);
-
+collectionButton.addEventListener('click', openCollection);
+collectionBackBtn.addEventListener('click', closeCollection);
 
 window.onload = async () => {
+     menuBgVideo.src = currentMapSrc;
+    gameBgVideo.src = currentMapSrc;
+
     await loadAssets();
 
     menuBgVideo.src = 'assets/images/videos/menu_bg.mp4';

@@ -1,4 +1,3 @@
-<!-- ...existing code... -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,7 +17,7 @@
         <div class="menu-overlay"></div>
         <div class="menu-content">
             <div class="menu-left">
-                <h1 class="menu-title">BERSERK</h1>
+                <h1 class="menu-title"></h1>
                 <nav class="menu-nav">
                     <button id="playButton" class="menu-btn large">Play</button>
                     <button id="collectionButton" class="menu-btn">Collection</button>
@@ -34,7 +33,38 @@
             </div>
         </div>
     </div>
+    <!-- COLLECTION SCREEN -->
+    <div id="collectionScreen" class="screen">
+ 
+        <div class="menu-overlay"></div>
+        
+        <div class="collection-content">
+            <h2 class="collection-title">ARSENAL</h2>
+            
+            <div class="collection-body">
+                <!-- Cột chọn Chim -->
+                <div class="collection-column">
+                    <h3>DRAGON SKINS</h3>
+                    <div class="skin-grid" id="birdGrid">
 
+                    </div>
+                </div>
+    <div class="collection-column">
+        <h3>OBSTACLES</h3>
+        <div class="skin-grid" id="pipeGrid"></div>
+    </div>
+                <!-- Cột chọn Map -->
+                <div class="collection-column">
+                    <h3>REALMS</h3>
+                    <div class="skin-grid" id="mapGrid">
+                  
+                    </div>
+                </div>
+            </div>
+
+            <button id="collectionBackBtn" class="menu-btn">Back to Menu</button>
+        </div>
+    </div>
     <div id="gameScreen" class="screen">
         <video id="gameBgVideo" loop muted playsinline>
             <source src="assets/videos/game_bg.mp4" type="video/mp4">
