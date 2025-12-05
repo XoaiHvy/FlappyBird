@@ -10,19 +10,52 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="menuScreen" class="screen active">
+	<!-- 1. MÀN HÌNH ĐĂNG NHẬP/ĐĂNG KÝ (Mới) -->
+    <!-- Đặt cái này lên đầu tiên trong body để nó hiện trước -->
+    <div id="authScreen" class="screen active">
+        <div class="menu-overlay"></div>
+        <div class="auth-container">
+            <h1 class="auth-title">BERZERK FLAPPY</h1>
+            
+            <div id="loginForm">
+                <input type="text" id="loginUser" placeholder="Username" autocomplete="off">
+                <input type="password" id="loginPass" placeholder="Password">
+                <div class="auth-actions">
+                    <button id="btnLogin" class="menu-btn large">Login</button>
+                    <button id="btnSwitchToReg" class="menu-btn secondary">Register</button>
+                </div>
+            </div>
+
+            <div id="registerForm" style="display: none;">
+                <input type="text" id="regUser" placeholder="Choose Username" autocomplete="off">
+                <input type="password" id="regPass" placeholder="Choose Password">
+                <div class="auth-actions">
+                    <button id="btnRegister" class="menu-btn large">Create Account</button>
+                    <button id="btnSwitchToLogin" class="menu-btn secondary">Back to Login</button>
+                </div>
+            </div>
+            <p id="authMessage" class="auth-msg"></p>
+        </div>
+    </div>
+	
+    <!-- 2. MENU SCREEN (Sửa đổi) -->
+    <!-- Xóa class "active" ở đây vì authScreen sẽ hiện trước -->
+    <div id="menuScreen" class="screen">
         <video id="menuBgVideo" autoplay loop muted playsinline>
             <source src="assets/videos/menu_bg.mp4" type="video/mp4">
         </video>
         <div class="menu-overlay"></div>
         <div class="menu-content">
             <div class="menu-left">
-                <h1 class="menu-title"></h1>
+                <!-- Thêm id để hiển thị tên người chơi -->
+                <h1 class="menu-title">BERZERK</h1> 
+                <div class="player-greeting">Welcome, <span id="displayUsername">Guest</span></div>
+                
                 <nav class="menu-nav">
                     <button id="playButton" class="menu-btn large">Play</button>
                     <button id="collectionButton" class="menu-btn">Collection</button>
                     <button id="profileButton" class="menu-btn">Profile</button>
-                    <button id="exitButton" class="menu-btn">Exit</button>
+                    <button id="logoutButton" class="menu-btn">Logout</button> <!-- Thay Exit bằng Logout -->
                 </nav>
             </div>
             <div class="menu-right">
@@ -65,6 +98,20 @@
             <button id="collectionBackBtn" class="menu-btn">Back to Menu</button>
         </div>
     </div>
+	<div id="profileScreen" class="screen">
+        <div class="menu-overlay"></div>
+        <div class="collection-content"> <!-- Tận dụng lại style của collection-content -->
+            <h2 class="collection-title">PILOT DATA</h2>
+            <div class="profile-card">
+                <div class="profile-info">
+                    <h3>Name: <span id="profileName">---</span></h3>
+                    <h3>High Score: <span id="profileBest">0</span></h3>
+                    <h3>Total Games: <span id="profileGames">0</span></h3>
+                </div>
+            </div>
+            <button id="profileBackBtn" class="menu-btn">Back to Menu</button>
+        </div>
+    </div>
     <div id="gameScreen" class="screen">
         <video id="gameBgVideo" loop muted playsinline>
             <source src="assets/videos/game_bg.mp4" type="video/mp4">
@@ -93,19 +140,34 @@
             </div>
         </div>
 
-        <!-- game over overlay (single copy) -->
-        <div id="gameOverOverlay" class="overlay">
-              <div class="gameover-wrap">
-    <div class="gameover-title">
-        <span class="go-line go-game">WHY YOU</span>
-      <span class="go-line go-over"> SO NOOB?</span>
-      <div class="gameover-actions"></div>
-         <button id="retryButton" class="go-btn">Continue</button>
-      <button id="gameOverExitButton" class="go-btn secondary">Exit to Menu</button>
-            <div class="final-score">Score: <span id="finalScore">0</span></div>
+        <!-- 4. GAME OVER OVERLAY (Sửa đổi) -->
+    <div id="gameOverOverlay" class="overlay">
+        <div class="gameover-wrap">
+            <div class="gameover-title">
+                <span class="go-line go-game">WHY YOU</span>
+                <span class="go-line go-over">SO NOOB?</span>
+            </div>
             
+            <!-- Khu vực điểm số -->
+            <div class="score-board">
+                <div class="score-item">
+                    <span>SCORE</span>
+                    <span id="finalScore" class="score-val">0</span>
+                </div>
+                <div class="score-item">
+                    <span>BEST</span>
+                    <span id="finalBestScore" class="score-val high-val">0</span>
+                </div>
+            </div>
+            <div id="newRecordMsg" class="new-record" style="display:none">NEW RECORD!</div>
+
+            <div class="gameover-actions">
+                <button id="retryButton" class="go-btn">Continue</button>
+                <button id="gameOverExitButton" class="go-btn secondary">Exit to Menu</button>
+            </div>
         </div>
     </div>
+    
 
     <script src="script.js"></script>
 </body>
