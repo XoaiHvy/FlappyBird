@@ -1,32 +1,48 @@
-/* --- PHẦN STYLE GỐC CỦA GAME --- */
+/* =========================================
+   GALAXY PURPLE THEME - FLAPPY BIRD
+   ========================================= */
+
+/* --- IMPORT FONTS (Giữ nguyên) --- */
+@import url('https://fonts.googleapis.com/css2?family=Aldrich&family=Exo+2:wght@400;700&display=swap');
+
+/* --- GLOBAL SETTINGS --- */
 body {
     margin: 0;
     overflow: hidden;
     font-family: 'Exo 2', sans-serif;
-    background-color: #1a1a1a;
+    /* Nền dự phòng màu tím đen vũ trụ */
+    background-color: #0d0015; 
+    color: white;
 }
 
+/* Biến màu cho dễ quản lý */
+:root {
+    --neon-purple: #bc13fe;
+    --neon-pink: #f09;
+    --neon-cyan: #0ff;
+    --deep-bg: rgba(18, 5, 36, 0.85);
+    --glass-border: rgba(188, 19, 254, 0.4);
+}
+
+/* --- SCREEN SETUP --- */
 .screen {
     position: fixed;
     inset: 0;
     width: 100vw;
     height: 100vh;
     background-color: #000;
-    display: none; /* Quan trọng: Ẩn mặc định */
+    display: none;
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    color: white;
-    border: none; 
-    box-shadow: none;
-    overflow: hidden;
     z-index: 1;
 }
 
 .screen.active {
-    display: flex; /* Chỉ hiện khi có class active */
+    display: flex;
 }
 
+/* --- VIDEO BACKGROUND --- */
 #menuBgVideo, #gameBgVideo {
     position: absolute;
     top: 50%;
@@ -38,122 +54,136 @@ body {
     object-fit: cover;
 }
 
+/* Lớp phủ màu tím mờ lên video để chữ dễ đọc hơn */
 .menu-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.1) 60%, rgba(0,0,0,0.9) 100%);
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(82, 0, 136, 0.2) 0%, rgba(13, 0, 21, 0.8) 100%);
     z-index: 1;
-    pointer-events: none; 
+    pointer-events: none;
 }
 
+/* --- MENU SCREEN --- */
 .menu-content {
     position: relative;
-    z-index: 2; 
+    z-index: 2;
     width: 100%;
     height: 100%;
     display: flex;
-    justify-content: flex-start; 
-    padding: 30px; 
-    box-sizing: border-box; 
+    padding: 40px;
+    box-sizing: border-box;
 }
 
 .menu-left {
     display: flex;
     flex-direction: column;
-    justify-content: space-between; 
-    align-items: flex-start; 
-    position: relative;
-    padding-top: 20px; 
-    padding-bottom: 20px; 
+    justify-content: center; /* Canh giữa dọc */
+    align-items: flex-start;
+    gap: 40px;
 }
 
+/* Tiêu đề Galaxy */
 .menu-title {
-    font-family: 'Aldrich', sans-serif; 
-    font-size: 5.5em; 
-    color: #f0f0f0; 
-    text-shadow: 0 0 15px rgba(78, 205, 196, 0.9), 
-                 0 0 30px rgba(78, 205, 196, 0.7),
-                 0 0 50px rgba(78, 205, 196, 0.5); 
-    letter-spacing: 2px; 
+    font-family: 'Aldrich', sans-serif;
+    font-size: 6em;
+    color: #fff;
     margin: 0;
-    line-height: 0.9;
+    line-height: 1;
+    text-transform: uppercase;
+    /* Hiệu ứng Glow Tím + Hồng */
+    text-shadow: 
+        0 0 10px var(--neon-purple),
+        0 0 20px var(--neon-purple),
+        0 0 40px var(--neon-purple),
+        0 0 80px var(--neon-pink);
+    animation: titlePulse 3s infinite alternate;
 }
 
+@keyframes titlePulse {
+    from { text-shadow: 0 0 10px var(--neon-purple), 0 0 20px var(--neon-purple); }
+    to { text-shadow: 0 0 20px var(--neon-purple), 0 0 40px var(--neon-pink), 0 0 60px var(--neon-pink); }
+}
+
+/* Menu Buttons */
 .menu-nav {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 15px; 
-    margin-top: auto; 
+    gap: 15px;
 }
 
 .menu-btn {
-    background: transparent; 
-    color: #9ef0e0; 
-    border: none;
-    padding: 12px 25px;
-    font-size: 1.2em;
-    font-family: 'Exo 2', sans-serif;
-    font-weight: 700;
-    letter-spacing: 1px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #e0ccff; /* Tím nhạt */
+    border: 1px solid transparent;
+    padding: 12px 30px;
+    font-size: 1.4em;
+    font-family: 'Aldrich', sans-serif;
+    letter-spacing: 2px;
     cursor: pointer;
-    transition: transform 0.2s ease, color 0.2s ease;
-    min-width: 180px;
     text-align: left;
-    text-shadow: 0 0 6px rgba(158,240,224,0.9);
+    min-width: 220px;
+    transition: all 0.3s ease;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    position: relative;
 }
 
 .menu-btn:hover {
-    transform: translateY(-3px);
-    color: #78d1c4; 
-    text-shadow: 0 0 15px rgba(120,220,200,0.8);
+    background: rgba(188, 19, 254, 0.2);
+    border-color: var(--neon-purple);
+    color: #fff;
+    padding-left: 45px; /* Dịch chuyển nhẹ */
+    text-shadow: 0 0 10px var(--neon-purple);
+    box-shadow: 0 0 20px rgba(188, 19, 254, 0.4);
 }
 
 .menu-btn.large {
-    font-size: 1.8em;
-    padding: 18px 35px;
-    min-width: 220px;
-    color: #a9ffd6;
-    text-shadow: 0 0 8px rgba(169,255,214,0.95);
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px var(--neon-cyan);
+}
+.menu-btn.large:hover {
+    color: #fff;
+    border-color: var(--neon-cyan);
+    background: rgba(0, 255, 255, 0.15);
 }
 
+/* Ẩn các phần không dùng */
 .top-right-elements, .booster-packs, .quest-indicator {
     display: none !important;
 }
 
-/* GAME UI */
+/* --- GAME UI --- */
 #gameCanvas {
-    position: relative; 
-    z-index: 1;             
-    background: transparent!important;
+    position: relative;
+    z-index: 1;
+    background: transparent !important;
     display: block;
 }
 
 #pauseButton {
-    background: rgba(0,0,0,0.45); 
-    width: 48px;
-    height: 48px;
+    background: rgba(30, 0, 50, 0.6);
+    border: 1px solid var(--neon-purple);
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
-    border: none;
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     cursor: pointer;
     position: absolute;
     top: 20px;
     right: 20px;
     z-index: 100;
+    transition: 0.3s;
 }
 #pauseButton:hover {
-    transform: scale(1.1);
-    background: rgba(0,0,0,0.7);
+    background: var(--neon-purple);
+    box-shadow: 0 0 15px var(--neon-purple);
 }
 #pauseButton .pause-icon {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     fill: #fff;
 }
 
@@ -161,269 +191,396 @@ body {
     position: absolute;
     top: 20px;
     left: 20px;
-    font-size: 32px;
+    font-family: 'Aldrich', sans-serif;
+    font-size: 40px;
     font-weight: bold;
     color: #fff;
-    text-shadow: 2px 2px 0px #000;
+    text-shadow: 
+        0 0 10px var(--neon-cyan),
+        2px 2px 0px #000;
     z-index: 10;
-    font-family: 'Aldrich', sans-serif;
 }
 
-/* OVERLAYS */
-.overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
+/* --- AUTH SCREEN (GALAXY STYLE) --- */
+.auth-container {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    background: var(--deep-bg);
+    padding: 50px;
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    box-shadow: 
+        0 0 30px rgba(0, 0, 0, 0.8),
+        inset 0 0 20px rgba(188, 19, 254, 0.1);
+    backdrop-filter: blur(15px);
+}
+
+.auth-title {
+    font-family: 'Aldrich', sans-serif;
+    color: #fff;
+    font-size: 3.5em;
+    margin-bottom: 30px;
+    text-shadow: 0 0 15px var(--neon-purple);
+}
+
+.auth-container input {
+    display: block;
+    width: 320px;
+    padding: 15px;
+    margin: 20px auto;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #555;
+    color: #fff;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 1.1em;
+    border-radius: 5px;
+    transition: 0.3s;
+}
+
+.auth-container input:focus {
+    outline: none;
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 15px var(--neon-cyan);
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.auth-msg {
+    color: var(--neon-pink);
+    min-height: 20px;
+    margin-top: 10px;
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(255, 0, 153, 0.5);
+}
+
+/* --- COLLECTION SCREEN (GALAXY STYLE) --- */
+.collection-content {
+    position: relative;
+    z-index: 10;
+    width: 90%;
+    height: 90%;
+    /* Glassmorphism Tím */
+    background: rgba(15, 5, 25, 0.9);
+    border: 1px solid var(--neon-purple);
+    border-radius: 15px;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 0 80px rgba(100, 0, 150, 0.6);
+    backdrop-filter: blur(20px);
+}
+
+.collection-title {
+    font-family: 'Aldrich', sans-serif;
+    font-size: 3.5em;
+    color: #fff;
+    text-shadow: 0 0 20px var(--neon-cyan);
+    margin-top: 0;
+    margin-bottom: 25px;
+    letter-spacing: 5px;
+}
+
+.collection-body {
+    display: flex;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.85); 
+    gap: 20px;
+    overflow: hidden;
+}
+
+.collection-column {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.collection-column h3 {
+    text-align: center;
+    font-family: 'Aldrich', sans-serif;
+    color: var(--neon-purple); /* Tiêu đề cột màu tím */
+    border-bottom: 1px solid rgba(188, 19, 254, 0.3);
+    padding-bottom: 10px;
+    margin-top: 0;
+    text-shadow: 0 0 10px rgba(188, 19, 254, 0.5);
+}
+
+.skin-grid {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 15px;
+    padding-right: 5px;
+}
+
+.skin-grid::-webkit-scrollbar { width: 6px; }
+.skin-grid::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+.skin-grid::-webkit-scrollbar-thumb { background: var(--neon-purple); border-radius: 3px; }
+
+.skin-item {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.skin-item:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+/* Khi item được chọn -> Sáng rực rỡ */
+.skin-item.selected {
+    border: 2px solid var(--neon-cyan);
+    background: rgba(0, 255, 255, 0.1);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+}
+
+.skin-img {
+    width: 100%;
+    height: 70px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.3));
+}
+.map-preview {
+    width: 100%;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+.skin-name {
+    font-size: 0.8em;
+    margin-top: 8px;
+    color: #ccc;
+    font-weight: bold;
+}
+
+/* Nút Back trong Collection */
+#collectionBackBtn {
+    margin-top: 20px;
+    background: transparent;
+    border: 1px solid var(--neon-purple);
+    color: #fff;
+    padding: 10px 40px;
+    font-family: 'Aldrich', sans-serif;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: 0.3s;
+}
+#collectionBackBtn:hover {
+    background: var(--neon-purple);
+    box-shadow: 0 0 20px var(--neon-purple);
+}
+
+/* --- OVERLAYS (PAUSE & GAME OVER) --- */
+.overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(5, 0, 10, 0.9); /* Nền tối hơn */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    color: #ffffff;
-    z-index: 20;
+    z-index: 50;
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.3s;
-    backdrop-filter: blur(5px);
+    backdrop-filter: blur(8px);
 }
-
 .overlay.visible {
     visibility: visible;
     opacity: 1;
 }
 
+/* Game Over Text */
 .gameover-title {
+    text-align: center;
+    margin-bottom: 30px;
+    line-height: 1.2;
+}
+.go-line {
     font-family: 'Aldrich', sans-serif;
     font-size: 4em;
-    margin-bottom: 20px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-}
-.go-line.go-game { color: #8b0000; }
-.go-line.go-over { color: #d82626; text-shadow: 0 0 20px red; }
-
-.go-btn, .pause-item {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    padding: 10px 20px;
-    margin: 10px;
-    border: 1px solid rgba(255,255,255,0.3);
-    cursor: pointer;
-    font-family: 'Aldrich', sans-serif;
-    font-size: 1.2em;
-    min-width: 200px;
-}
-.go-btn:hover, .pause-item:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: #fff;
-}
-.pause-panel { text-align: center; }
-.pause-menu { list-style: none; padding: 0; }
-
-/* COLLECTION SCREEN STYLES */
-.collection-content {
-    position: relative;
-    z-index: 10;
-    width: 85%;
-    height: 85%;
-    background: rgba(10, 10, 10, 0.95);
-    border: 1px solid #4ecdc4;
-    border-radius: 12px;
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    box-shadow: 0 0 60px rgba(0,0,0,0.8);
-}
-.collection-title {
-    font-family: 'Aldrich', sans-serif;
-    font-size: 3em;
-    color: #4ecdc4;
-    text-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
-    margin: 0 0 20px 0;
-}
-.collection-body {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    gap: 30px;
-    overflow: hidden; 
-}
-.collection-column {
-    flex: 1;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-}
-.collection-column h3 {
-    text-align: center;
-    color: #a9ffd6;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-.skin-grid {
-    flex: 1;
-    overflow-y: auto; 
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
-    gap: 15px;
-}
-.skin-item {
-    background: rgba(0,0,0,0.6);
-    border: 2px solid rgba(255,255,255,0.1);
-    padding: 10px;
-    cursor: pointer;
-    text-align: center;
-}
-.skin-item.selected {
-    border-color: #ff0000;
-    background: rgba(100,0,0,0.2);
-}
-.skin-img { width: 100%; height: 60px; object-fit: contain; }
-.map-preview { width: 100%; height: 60px; object-fit: cover; }
-.skin-name { font-size: 0.8em; margin-top: 5px; color: #ccc; }
-
-/* --- PHẦN STYLE MỚI CHO AUTH & SCORE (ĐƯỢC GỘP VÀO) --- */
-
-/* Auth Screen */
-.auth-container {
-    position: relative;
-    z-index: 10;
-    text-align: center;
-    background: rgba(10, 10, 10, 0.85); /* Đậm hơn chút */
-    padding: 40px 60px;
-    border: 2px solid #4ecdc4;
-    border-radius: 12px;
-    box-shadow: 0 0 50px rgba(78, 205, 196, 0.3);
-    backdrop-filter: blur(10px);
-}
-
-.auth-title {
-    font-family: 'Aldrich', sans-serif;
-    color: #4ecdc4;
-    font-size: 3em;
-    margin-bottom: 30px;
-    text-shadow: 0 0 20px #4ecdc4;
-}
-
-.auth-container input {
     display: block;
-    width: 300px;
-    padding: 15px;
-    margin: 15px auto;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid #4ecdc4;
-    color: white;
-    font-family: 'Exo 2', sans-serif;
-    font-size: 1.1em;
-    outline: none;
-    border-radius: 4px;
 }
-
-.auth-container input:focus {
-    box-shadow: 0 0 15px rgba(78, 205, 196, 0.5);
-    background: rgba(0, 0, 0, 0.8);
+.go-game { 
+    color: #fff; 
+    text-shadow: 0 0 10px rgba(255,255,255,0.5);
 }
-
-.auth-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-top: 25px;
-    align-items: center;
+.go-over { 
+    color: var(--neon-pink); /* Đổi màu đỏ máu thành hồng neon */
+    font-size: 1.2em; /* To hơn chữ trên */
+    text-shadow: 
+        0 0 10px var(--neon-pink),
+        0 0 30px var(--neon-pink);
+    animation: flicker 2s infinite;
 }
-
-.auth-msg {
-    min-height: 20px;
-    color: #ff4444;
-    margin-top: 15px;
-    font-weight: bold;
-}
-
-.player-greeting {
-    font-size: 1.5em;
-    color: #aaa;
-    margin-bottom: 20px;
-    text-shadow: 1px 1px 2px black;
-}
-
-#displayUsername {
-    color: #4ecdc4;
-    font-weight: bold;
-    text-shadow: 0 0 10px rgba(78,205,196,0.8);
+@keyframes flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+    20%, 24%, 55% { opacity: 0.4; }
 }
 
 /* Score Board in Game Over */
 .score-board {
     display: flex;
-    justify-content: center;
-    gap: 40px;
-    margin: 20px 0;
+    gap: 50px;
+    margin-bottom: 30px;
+    background: rgba(255,255,255,0.05);
+    padding: 20px 40px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
 }
-
 .score-item {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
-
 .score-item span:first-child {
     font-size: 14px;
-    color: #aaa;
+    color: var(--neon-cyan);
     letter-spacing: 2px;
     margin-bottom: 5px;
+    text-transform: uppercase;
 }
-
 .score-val {
     font-family: 'Aldrich', sans-serif;
-    font-size: 50px;
-    font-weight: bold;
+    font-size: 45px;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255,255,255,0.5);
 }
-
 .score-val.high-val {
-    color: #eebb00; 
-    text-shadow: 0 0 15px rgba(255, 200, 0, 0.6);
+    color: #ffd700; /* Vàng kim */
+    text-shadow: 0 0 20px #ffd700;
 }
 
-.new-record {
-    color: #ff00ff;
-    font-size: 1.8em;
+/* Buttons in Overlay */
+.go-btn, .pause-item {
+    background: transparent;
+    color: #fff;
     font-family: 'Aldrich', sans-serif;
-    font-weight: bold;
-    margin-bottom: 15px;
-    animation: pulse 0.5s infinite alternate;
+    font-size: 1.3em;
+    padding: 12px 30px;
+    margin: 10px;
+    border: 1px solid rgba(255,255,255,0.3);
+    cursor: pointer;
+    min-width: 200px;
+    transition: 0.3s;
+    text-transform: uppercase;
+}
+.go-btn:hover, .pause-item:hover {
+    border-color: var(--neon-cyan);
+    background: rgba(0, 255, 255, 0.1);
+    box-shadow: 0 0 20px var(--neon-cyan);
+    transform: translateY(-3px);
+}
+.go-btn.secondary {
+    border-color: #555;
+    color: #aaa;
+}
+.go-btn.secondary:hover {
+    border-color: #fff;
+    color: #fff;
+    box-shadow: 0 0 10px #fff;
 }
 
-@keyframes pulse {
-    from { opacity: 0.6; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1.05); }
-}
-
-/* Profile Styles */
+/* --- PROFILE SCREEN (GALAXY STYLE) --- */
 .profile-card {
-    background: rgba(0, 0, 0, 0.6);
-    padding: 30px;
-    border-radius: 8px;
+    background: var(--deep-bg);
+    padding: 40px;
+    border-radius: 15px;
     width: 60%;
+    min-width: 350px;
     margin-bottom: 20px;
     text-align: left;
-    border: 1px solid rgba(78, 205, 196, 0.3);
+    border: 1px solid var(--neon-purple);
+    box-shadow: 
+        0 0 40px rgba(100, 0, 200, 0.4),
+        inset 0 0 20px rgba(188, 19, 254, 0.1);
+    backdrop-filter: blur(15px);
 }
 
+.player-greeting {
+    font-size: 2em;
+    font-family: 'Aldrich', sans-serif;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 30px;
+    text-shadow: 0 0 10px var(--neon-cyan);
+}
+#displayUsername { color: var(--neon-cyan); }
+
 .profile-card h3 {
-    margin: 20px 0;
+    margin: 25px 0 15px 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-bottom: 10px;
     display: flex;
     justify-content: space-between;
-    color: white;
+    color: #e0aaff; /* Tím phấn */
+    font-family: 'Exo 2', sans-serif;
+    font-size: 1.2em;
 }
+
 .profile-card h3 span {
-    color: #4ecdc4;
     font-family: 'Aldrich', sans-serif;
+    font-size: 1.3em;
+    color: var(--neon-pink);
+    text-shadow: 0 0 8px var(--neon-pink);
+}
+
+@media (max-width: 768px) {
+    .menu-title { font-size: 3.5em; }
+    .collection-body { flex-direction: column; overflow-y: auto; }
+    .profile-card { width: 90%; padding: 20px; }
+    .auth-container { padding: 30px; width: 90%; }
+    .auth-container input { width: 100%; box-sizing: border-box; }
+}
+/* Boss Warning Effect */
+.boss-warning {
+    position: absolute;
+    top: 30%;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-family: 'Aldrich', sans-serif;
+    font-size: 5em;
+    color: red;
+    text-shadow: 0 0 20px yellow;
+    display: none;
+    z-index: 100;
+    animation: flash 0.5s infinite;
+}
+
+@keyframes flash {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+/* HP Bar cho Boss */
+#bossHpBar {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 20px;
+    background: #333;
+    border: 2px solid white;
+    display: none;
+    z-index: 90;
+}
+#bossHpFill {
+    width: 100%;
+    height: 100%;
+    background: red;
+    transition: width 0.2s;
 }
