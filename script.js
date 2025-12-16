@@ -197,11 +197,11 @@ const BIRD_SKINS = [
 ];
 
 const MAP_SKINS = [
-    { id: 'map_eldenring',   name: 'Elden Ring',   src: 'assets/images/videos/eldenring_map.mp4' },
-    { id: 'map_starrynight', name: 'Starry Night', src: 'assets/images/videos/starrynight_map.mp4', music: 'assets/audio/music/vangogh.mp3' },
-    { id: 'map_city',        name: 'Night City',   src: 'assets/images/videos/city_map.mp4', music: 'assets/audio/music/nightcity.mp3' },
-    { id: 'map_default',     name: 'Berserk',      src: 'assets/images/videos/game_bg.mp4' },
-    { id: 'map_frozen',      name: 'Frozen Zerg',  src: 'assets/images/videos/frozen_map.mp4'}
+    { id: 'map_eldenring',   name: 'Elden Ring',   src: 'assets/videos/eldenring_map.mp4' },
+    { id: 'map_starrynight', name: 'Starry Night', src: 'assets/videos/starrynight_map.mp4', music: 'assets/audio/music/vangogh.mp3' },
+    { id: 'map_city',        name: 'Night City',   src: 'assets/videos/city_map.mp4', music: 'assets/audio/music/nightcity.mp3' },
+    { id: 'map_default',     name: 'Berserk',      src: 'assets/videos/game_bg.mp4' },
+    { id: 'map_frozen',      name: 'Frozen Zerg',  src: 'assets/videos/frozen_map.mp4'}
 ];
 const PIPE_SKINS = [
     { id: 'pipe_default', name: 'Corpse of Berserk', top: 'assets/images/pipe_top.png', bottom: 'assets/images/pipe_bottom.png' },
@@ -218,6 +218,9 @@ const SFX = {
 let currentBirdSrc = localStorage.getItem('selectedBirdSrc') || BIRD_SKINS[0].src;
 let currentMapSrc = localStorage.getItem('selectedMapSrc') || MAP_SKINS[0].src;
 let currentPipeId = localStorage.getItem('selectedPipeId') || 'pipe_default';
+
+// --- FIX: KHAI BÁO BIẾN CÒN THIẾU ---
+let currentMusicSrc = '';
 
 // Collection DOM
 const collectionScreen = document.getElementById('collectionScreen');
