@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phantom Leviathan - Final Fixed</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden; /* Chặn thanh cuộn */
+            font-family: 'Segoe UI', monospace;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: lime;
+            font-size: 20px;
+            pointer-events: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="loading">LOADING ASSETS...</div>
+
+    <!-- 1. Logic (Tính toán tọa độ) -->
+    <script src="boss_logic.js"></script>
+    <!-- 2. View (Vẽ hình) -->
+    <script src="boss_canvas_logic.js"></script>
+</body>
+</html>
