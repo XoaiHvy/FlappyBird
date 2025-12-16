@@ -1,73 +1,109 @@
 /**
  * boss_canvas_logic.js
- * VISUAL FIXED: 
- * - VisSpace = 0 (Để logic tự khớp)
- * - DrW = 1000px vs Logic 450px tạo độ đè đẹp mắt
+ * FIXED LAYERING ULTIMATE:
+ * 1. Back Canvas (Mặc định): Vẽ Thân Rắn Trên.
+ * 2. Boss DOM Image (Z=10): Hình head.gif to, nằm đè lên Rắn Trên.
+ * 3. Front Canvas (Tạo thêm, Z=15): Vẽ Thân Rắn Dưới -> ĐÈ LÊN BOSS.
  */
 
 (function() {
-    let canvas, ctx;
+    let canvasBack, ctxBack; // Canvas nền (Snake 1)
+    let canvasFront, ctxFront; // Canvas nổi (Snake 2, HUD)
+
+    let domHead1, domHead2, domBoss; // Thẻ IMG cho các đầu & boss
+
+    // ▼ CHỈNH BOSS TO TẠI ĐÂY ▼
+    const BOSS_SCALE = 1.3; 
 
     const P = {
-        visSpace: 0,
-        drW: 1000, 
-        drH: 250,
-        hSize: 450,
-        
-        // --- TINH CHỈNH KHỚP CỔ Ở ĐÂY ---
-        // Nếu thân giãn ra (Logic tăng), có thể bạn cần tăng giá trị này lên một chút 
-        // để đẩy đầu về đúng vị trí khớp nối.
-        // Ví dụ: Đang là -150, thử sửa thành -100 hoặc -50 (hoặc -250 tùy hướng hở)
-        hOffX: -50,  
-        // --------------------------------
-        
-        hOffY: -50, // Độ cao khớp cổ
-        rotB: 3,         
-        rotH: -4        
+        visSpace: 0, drW: 1000, drH: 250, hSize: 450,
+        hOffX: -50, hOffY: -50, 
+        rotB: 3, rotH: -4        
     };
 
-    // Đổi tên file ở đây nếu cần
     const ASSET_SOURCES = {
-        snakeHead: 'Image/head.gif', 
-        snakeHeadFlip: 'Image/head.gif', // Có thể dùng head_flip.gif nếu có
         snakeBody: 'Image/body.png', 
         bullet: 'Image/posionbullet.png', 
-        bossFrame: 'Image/BossFrame.png' 
+        bossFrame: 'Image/BossFrame.png',
+        player: 'Image/dragon.png',
+        // [SỬA THEO Ý BẠN]: Đầu Boss to dùng chung file head.gif
+        bossFace: 'Image/head.gif' 
     };
     
     const assets = {}; let assetsLoaded=0;
     const state = { fps:0, lastTime:0, dragon:{x:0,y:0,vy:0,width:80,height:80}, isDebug: false };
 
+    // Bong bóng HUD
+    const bubbles = [];
+    for(let i=0; i<15; i++) {
+        bubbles.push({x: Math.random(), y: Math.random(), r: 2+Math.random()*3, s: 0.05+Math.random()*0.05});
+    }
+
     function initSystem() {
-        canvas = document.getElementById('gameCanvas'); if(!canvas)return;
-        ctx = canvas.getContext('2d');
+        // 1. SETUP CANVAS NỀN (Back)
+        canvasBack = document.getElementById('gameCanvas'); if(!canvasBack)return;
+        ctxBack = canvasBack.getContext('2d');
+        canvasBack.style.zIndex = 1; 
+
+        // 2. SETUP CANVAS NỔI (Front) - Tạo mới bằng code
+        canvasFront = document.createElement('canvas');
+        canvasFront.style.position = 'absolute';
+        canvasFront.style.top = '0'; canvasFront.style.left = '0';
+        canvasFront.style.width = '100%'; canvasFront.style.height = '100%';
+        canvasFront.style.pointerEvents = 'none'; // Click xuyên qua
+        canvasFront.style.zIndex = 15; // Nằm trên Boss (Z=10)
+        document.body.appendChild(canvasFront);
+        ctxFront = canvasFront.getContext('2d');
+
+        // 3. SETUP CÁC THẺ ẢNH GIF
+        
+        // - Đầu rắn trên: Nằm trên canvasBack (Z=5) nhưng dưới Boss (Z=10)
+        domHead1 = createOverlayImage('Image/head.gif', 5);
+        
+        // - BOSS TO: [QUAN TRỌNG] Z=10 -> Nằm TRÊN rắn trên, nhưng DƯỚI rắn dưới
+        domBoss = createOverlayImage('Image/head.gif', 10); 
+        
+        // - Đầu rắn dưới: Cao nhất (Z=20)
+        domHead2 = createOverlayImage('Image/head_flip.gif', 20);
+
         resizeGame(); window.addEventListener('resize', resizeGame);
         
-        // Tạo Player test (Vuông hoặc ảnh nếu có)
-        state.dragon.x = canvas.width*0.15; state.dragon.y = canvas.height/2;
+        // Setup Player
+        state.dragon.x = window.innerWidth*0.15; state.dragon.y = window.innerHeight/2;
+        if(window.BossController) window.bossController=new window.BossController(window.innerWidth, window.innerHeight);
         
-        if(window.BossController) window.bossController=new window.BossController(canvas.width, canvas.height);
-        
-        loadAssets(()=>{
-            document.getElementById('loading').style.display='none'; 
-            requestAnimationFrame(loop);
-        });
-        
-        // Điều khiển player test
+        // Chỉnh boss qua phải 95%
+        if(window.BossController) window.bossController.ghostX = window.innerWidth * 0.95;
+
+        loadAssets(()=>{document.getElementById('loading').style.display='none'; requestAnimationFrame(loop);});
         window.addEventListener('keydown', e=>{if(e.code==='Space') state.dragon.vy=-10.5; if(e.key==='h')state.isDebug=!state.isDebug;});
-        
-        // Lắng nghe Tuning (Nếu mở file boss_tuning.html)
-        try{
-            new BroadcastChannel('boss_tuning_live').onmessage = (ev) => {
-                if(ev.data) { Object.assign(P, ev.data); }
-            }
-        }catch(e){}
+    }
+    
+    function createOverlayImage(src, zIndex) {
+        let img = document.createElement('img');
+        img.src = src;
+        img.style.position = 'absolute';
+        img.style.zIndex = zIndex; 
+        img.style.display = 'none'; 
+        img.style.pointerEvents = 'none'; 
+        img.style.transformOrigin = '50% 50%'; 
+        document.body.appendChild(img);
+        return img;
+    }
+
+    function updateDomImg(img, x, y, rotation, scale = 1.0) {
+        if(!img) return;
+        img.style.display = 'block';
+        img.style.left = x + 'px';
+        img.style.top = y + 'px';
+        img.style.transform = `translate(-50%, -50%) rotate(${rotation}rad) scale(${scale})`;
     }
 
     function resizeGame() {
-        canvas.width=window.innerWidth; canvas.height=window.innerHeight;
-        if(window.bossController) window.bossController.resize(canvas.width, canvas.height);
-        state.dragon.x = canvas.width*0.15;
+        canvasBack.width = window.innerWidth; canvasBack.height = window.innerHeight;
+        canvasFront.width = window.innerWidth; canvasFront.height = window.innerHeight;
+        if(window.bossController) window.bossController.resize(window.innerWidth, window.innerHeight);
+        state.dragon.x = window.innerWidth*0.15;
     }
 
     function loadAssets(cb) {
@@ -75,18 +111,14 @@
         for(let k in ASSET_SOURCES){
             let i=new Image();i.src=ASSET_SOURCES[k];
             i.onload=()=>{assets[k]=i; assetsLoaded++; if(assetsLoaded===t)cb()};
-            i.onerror=()=>{console.warn("Lỗi load ảnh: " + k); assetsLoaded++; if(assetsLoaded===t)cb()};
+            i.onerror=()=>{console.warn("Lỗi ảnh: "+k); assetsLoaded++; if(assetsLoaded===t)cb()};
         }
     }
 
-    function drawRotated(img, x, y, w, h, angle) {
-        if(!img)return; 
-        ctx.save(); 
-        ctx.translate(x,y); 
-        ctx.rotate(angle);
+    // Vẽ xoay (truyền ctx để chọn vẽ lên canvas trước hay sau)
+    function drawRotated(ctx, img, x, y, w, h, angle) {
+        if(!img)return; ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
         ctx.drawImage(img, -w/2, -h/2, w, h);
-        
-        if(state.isDebug) { ctx.strokeStyle='red';ctx.strokeRect(-w/2,-h/2,w,h); } 
         ctx.restore();
     }
 
@@ -95,104 +127,136 @@
         const radHead = P.rotH * (Math.PI / 180);
 
         boss.snakes.forEach(s=>{
-            // Nếu chưa đến lúc xuất hiện thì không vẽ
-            if(!s.isActive && s.id===2 && boss.introTimer<7000) return;
-            
-            // --- VẼ THÂN (BODY) ---
-            const baseAngle = (s.angle !== undefined) ? s.angle : 0;
-            const finalBodyAngle = baseAngle + radBody;
+            // --- XÁC ĐỊNH VẼ Ở ĐÂU ---
+            // Snake 1 (Trên): Vẽ vào Back (Bị Boss che)
+            // Snake 2 (Dưới): Vẽ vào Front (Che Boss)
+            let targetCtx = (s.id === 1) ? ctxBack : ctxFront; 
+            let domImg = (s.id === 1) ? domHead1 : domHead2;
 
-            // Loop vẽ từng đốt
+            if(!s.isActive && s.id===2 && boss.introTimer<6000) {
+                 if(domImg) domImg.style.display='none';
+                 return;
+            }
+
+            // Vẽ Thân
+            const finalBodyAngle = (s.angle !== undefined ? s.angle : 0) + radBody;
             s.segments.forEach((seg, index) => {
                 let extraSpace = index * P.visSpace; 
                 let drawX = seg.x + (extraSpace * -s.direction); 
-                drawRotated(assets.snakeBody, drawX, seg.y, P.drW, P.drH, finalBodyAngle);
+                drawRotated(targetCtx, assets.snakeBody, drawX, seg.y, P.drW, P.drH, finalBodyAngle);
             });
-            
-            // --- VẼ ĐẦU (HEAD) ---
-            // Đầu cần offset để khớp với đốt đầu tiên
-            let img = s.id===1 ? assets.snakeHead : assets.snakeHeadFlip;
-            
-            let finalHeadAngle = radHead;
-            if(s.id===2) finalHeadAngle = -finalHeadAngle; 
-            
+
+            // Update DOM Head
+            let finalHeadAngle = (s.id===1) ? radHead : -radHead;
             let hx = (s.headX || s.x);
-            
-            // Áp dụng offset (Cân chỉnh thủ công từ biến P)
-            if (s.id === 1) hx += P.hOffX;
-            else hx -= P.hOffX; // Đảo chiều nếu chạy hướng ngược lại
-
+            if (s.id === 1) hx += P.hOffX; else hx -= P.hOffX;
             let hy = s.y + P.hOffY;
-
-            // Vẽ đầu sau cùng để nằm đè lên cổ
-            drawRotated(img, hx, hy, P.hSize, P.hSize, finalHeadAngle);
+            if (s.id === 2) hy += 60;
+            
+            if(domImg) {
+                domImg.style.width = P.hSize + 'px'; domImg.style.height = 'auto';
+                // Shake chung toàn màn hình
+                updateDomImg(domImg, hx + window.currentShakeX, hy + window.currentShakeY, finalHeadAngle, 1.0); 
+            }
         });
     }
 
-    function drawHUD(boss) {
+    function drawLiquidHUD(ctx, boss) {
         if(boss.visualHp<=0) return;
-        const cx=canvas.width/2, W=Math.min(800, canvas.width*0.9), H=W/5.3, X=cx-W/2, Y=40;
+        const cx=canvasBack.width/2, W=Math.min(800, canvasBack.width*0.9), H=W/5.3, X=cx-W/2, Y=40;
         
-        // Tên Boss
-        ctx.save(); ctx.fillStyle='#ccff00'; ctx.font="bold 28px 'Impact', sans-serif"; ctx.textAlign='center';
-        ctx.shadowColor='black'; ctx.shadowBlur=6; 
-        ctx.fillText("THE PHANTOM LEVIATHAN", cx, Y-10); ctx.restore();
+        ctx.save(); ctx.fillStyle='#39ff14'; ctx.font="bold 28px 'Impact'"; ctx.textAlign='center';
+        ctx.shadowColor='#39ff14'; ctx.shadowBlur=15; ctx.fillText("THE PHANTOM LEVIATHAN", cx, Y-10); ctx.restore();
         
-        // Thanh máu
         const bx=X+(W*0.175), by=Y+(H*0.39), bw=W*0.76, bh=H*0.20;
-        ctx.fillStyle='#222'; ctx.fillRect(bx, by, bw, bh);
+        ctx.fillStyle='#001100'; ctx.fillRect(bx, by, bw, bh);
+        
         let cur = bw*(boss.visualHp/100);
         if(cur>0){
-            let g=ctx.createLinearGradient(bx,0,bx,by+bh); g.addColorStop(0,'#f00'); g.addColorStop(1,'#800');
-            ctx.fillStyle=g; ctx.fillRect(bx,by,cur,bh);
+            ctx.save(); ctx.beginPath(); ctx.rect(bx, by, cur, bh); ctx.clip();
+
+            let g = ctx.createLinearGradient(bx, by, bx, by+bh);
+            g.addColorStop(0, '#32CD32'); g.addColorStop(1, '#005500'); 
+            ctx.fillStyle = g; ctx.fillRect(bx, by, cur, bh);
+
+            ctx.fillStyle = "rgba(173, 255, 47, 0.4)"; let time = Date.now() * 0.005;
+            ctx.beginPath(); ctx.moveTo(bx, by + bh); ctx.lineTo(bx, by + 10);
+            for(let dx=0; dx<=cur; dx+=10) ctx.lineTo(bx+dx, by+5 + Math.sin(dx*0.02+time)*5);
+            ctx.lineTo(bx+cur, by+bh); ctx.fill();
+
+            ctx.fillStyle = "rgba(255,255,255,0.5)";
+            bubbles.forEach(b => {
+                b.y -= b.s; if(b.y < -0.1) b.y = 1.1; 
+                if(b.x * bw < cur) { ctx.beginPath(); ctx.arc(bx + b.x*cur, by + b.y*bh, b.r, 0, Math.PI*2); ctx.fill(); }
+            });
+
+            let gGlass = ctx.createLinearGradient(bx, by, bx, by+bh*0.5);
+            gGlass.addColorStop(0, 'rgba(255,255,255,0.6)'); gGlass.addColorStop(1, 'rgba(255,255,255,0.0)');
+            ctx.fillStyle = gGlass; ctx.fillRect(bx, by, cur, bh*0.4);
+            ctx.restore();
         }
         if(assets.bossFrame) ctx.drawImage(assets.bossFrame, X, Y, W, H);
     }
     
     function draw() {
-        if(!ctx)return;
+        if(!ctxBack)return;
         let b = window.bossController;
         let sx=0, sy=0; if(b){sx=b.shake.x;sy=b.shake.y;}
-        
-        ctx.save(); ctx.translate(sx,sy);
-        
-        // Background tối
-        ctx.fillStyle='#0d0d0d'; ctx.fillRect(-20,-20,canvas.width+40,canvas.height+40);
+        window.currentShakeX = sx; window.currentShakeY = sy;
+
+        if(!b) { if(domHead1)domHead1.style.display='none'; if(domHead2)domHead2.style.display='none'; if(domBoss)domBoss.style.display='none'; }
+
+        // --- CLEAR CẢ 2 CANVAS ---
+        ctxBack.clearRect(0, 0, canvasBack.width, canvasBack.height);
+        ctxFront.clearRect(0, 0, canvasFront.width, canvasFront.height);
+
+        // --- DRAW VÀO BACK ---
+        ctxBack.save(); ctxBack.translate(sx,sy);
+        // Nền đen
+        ctxBack.fillStyle='#0d0d0d'; ctxBack.fillRect(-20,-20,canvasBack.width+40,canvasBack.height+40);
         
         if(b) {
-            // Vẽ đạn
-            b.projectiles.forEach(p=>{ if(assets.bullet) drawRotated(assets.bullet,p.x,p.y,30,30,0) });
-            // Vẽ rồng
-            drawSnakes(b);
+            b.projectiles.forEach(p=>{ if(assets.bullet) drawRotated(ctxBack, assets.bullet,p.x,p.y,30,30,0) });
+            // Vẽ Rắn -> Hàm này tự chia rắn nào vẽ Front, rắn nào vẽ Back
+            drawSnakes(b); 
+            
+            // --- XỬ LÝ BOSS HEAD (DOM) ---
+            if(b.events && b.events.ghostEnter && domBoss) {
+                let opacity = (b.state === 'INTRO' && b.timer < 10000) ? Math.min((b.timer-8500)/1000, 1) : 1;
+                domBoss.style.opacity = opacity;
+                domBoss.style.width = '500px'; domBoss.style.height = 'auto'; // Kích thước boss gốc trước scale
+                
+                // Update vị trí DOM BOSS
+                updateDomImg(domBoss, b.ghostX + sx, b.ghostY + sy, 0, BOSS_SCALE);
+            } else { if(domBoss) domBoss.style.display='none'; }
         }
         
-        // Player Test
-        ctx.fillStyle='cyan'; ctx.fillRect(state.dragon.x, state.dragon.y, 40,40);
+        // Vẽ Player ở Front để không bị Back che, nhưng cũng ko quan trọng lắm vì player test
+        if (assets.player) {
+            ctxFront.drawImage(assets.player, state.dragon.x + sx, state.dragon.y + sy, 80, 80);
+        }
+        
+        ctxBack.restore();
 
-        ctx.restore();
-
-        // UI Layer
+        // --- UI DRAW VÀO FRONT (Để đè lên tất cả) ---
         if(b) {
             if(b.isWarning) { 
                 let a = Math.abs(Math.sin(Date.now()/150))*0.3;
-                ctx.fillStyle=`rgba(255,0,0,${a})`; ctx.fillRect(0,0,canvas.width,canvas.height);
-                ctx.save(); ctx.fillStyle='#ffd700'; ctx.font="900 80px Impact"; ctx.textAlign='center'; 
-                ctx.fillText("⚠ DANGER ⚠", canvas.width/2, canvas.height/2); ctx.restore();
+                ctxFront.fillStyle=`rgba(0, 255, 0, ${a})`; ctxFront.fillRect(0,0,canvasFront.width,canvasFront.height);
+                ctxFront.save(); ctxFront.fillStyle='#39ff14'; ctxFront.font="900 80px Impact"; ctxFront.textAlign='center'; 
+                ctxFront.shadowBlur=10; ctxFront.shadowColor='green';
+                ctxFront.fillText("⚠ TOXIC ⚠", canvasFront.width/2, canvasFront.height/2); ctxFront.restore();
             }
-            drawHUD(b);
+            drawLiquidHUD(ctxFront, b);
         }
-        ctx.fillStyle='lime'; ctx.font='12px monospace'; ctx.fillText("FPS: "+state.fps,10,20);
+        ctxFront.fillStyle='lime'; ctxFront.font='12px monospace'; ctxFront.fillText("FPS: "+state.fps,10,20);
     }
 
     function update(dt) {
         state.fps=Math.round(1000/dt);
-        
-        // Physics đơn giản cho player test (Trọng lực)
         state.dragon.vy+=0.45*(dt/16); state.dragon.y+=state.dragon.vy*(dt/16);
-        if(state.dragon.y>canvas.height-80) state.dragon.y=canvas.height-80;
+        if(state.dragon.y>canvasBack.height-80) state.dragon.y=canvasBack.height-80;
         if(state.dragon.y<0){state.dragon.y=0;state.dragon.vy=0;}
-        
-        // Boss update
         if(window.bossController) window.bossController.update(dt);
     }
 
@@ -200,6 +264,5 @@
         if(!state.lastTime)state.lastTime=ts; let dt=ts-state.lastTime;
         if(dt<1000){update(dt);draw();} state.lastTime=ts; requestAnimationFrame(loop);
     }
-    
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initSystem);else initSystem();
 })();
