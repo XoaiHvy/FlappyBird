@@ -3,43 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phantom Leviathan - Final Fixed</title>
+    <title>Phantom Leviathan - Final Debug</title>
     <style>
         html, body {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            overflow: hidden; /* Chặn thanh cuộn */
-            font-family: 'Segoe UI', monospace;
+            width: 100%; height: 100%; margin: 0; padding: 0;
+            background-color: #000; overflow: hidden; font-family: 'Segoe UI', monospace;
         }
         
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
+        #gameCanvas { display: block; width: 100%; height: 100%; }
 
         #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: lime;
-            font-size: 20px;
-            pointer-events: none;
-            font-weight: bold;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: lime; font-size: 20px; pointer-events: none; font-weight: bold;
         }
+
+        /* NÚT DEBUG MỚI */
+        #debugBtn {
+            position: absolute; top: 10px; left: 10px; z-index: 1000;
+            background: rgba(255, 0, 0, 0.7); color: white; border: 1px solid white;
+            padding: 8px 12px; cursor: pointer; font-weight: bold; font-family: monospace;
+            border-radius: 4px; transition: 0.2s;
+        }
+        #debugBtn:hover { background: red; }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+    
     <div id="loading">LOADING ASSETS...</div>
+    
+    <!-- NÚT BẬT TẮT HITBOX -->
+    <button id="debugBtn" onclick="toggleDebug()">🔴 SHOW HITBOXES (Off)</button>
 
-    <!-- 1. Logic (Tính toán tọa độ) -->
     <script src="boss_logic.js"></script>
-    <!-- 2. View (Vẽ hình) -->
     <script src="boss_canvas_logic.js"></script>
+
+    <script>
+        // Hàm global để bật tắt debug
+        function toggleDebug() {
+            if(window.toggleGameDebug) {
+                let isOn = window.toggleGameDebug();
+                let btn = document.getElementById('debugBtn');
+                btn.innerText = isOn ? "🟢 HIDE HITBOXES (On)" : "🔴 SHOW HITBOXES (Off)";
+                btn.style.background = isOn ? "rgba(0, 255, 0, 0.7)" : "rgba(255, 0, 0, 0.7)";
+            }
+        }
+    </script>
 </body>
 </html>

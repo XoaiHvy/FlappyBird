@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hitbox Editor v3 (Live GIF)</title>
+    <style>
+        body { background: #1a1a1a; color: #ddd; font-family: 'Segoe UI', monospace; display: flex; gap: 20px; padding: 20px; height: 95vh; overflow: hidden; }
+        .controls { width: 340px; background: #2b2b2b; padding: 20px; border-radius: 8px; overflow-y: auto; display:flex; flex-direction:column; gap:10px; border:1px solid #444; height: 100%; box-sizing: border-box; }
+        
+        /* CONTAINER CHÍNH: QUAN TRỌNG ĐỂ CĂN GIỮA */
+        .preview-container { 
+            flex: 1; 
+            position: relative; 
+            background: #000; 
+            border: 2px solid #555; 
+            overflow: hidden; 
+            background-image: radial-gradient(#222 15%, transparent 16%);
+            background-size: 20px 20px;
+        }
+
+        /* ẢNH GIF THẬT: Sẽ nằm giữa màn hình */
+        #refImage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: 50% 50%; /* Xoay từ tâm */
+            pointer-events: none; /* Click xuyên qua */
+            /* Mặc định chưa set transform, JS sẽ set */
+            opacity: 0.8;
+        }
+
+        /* CANVAS VẼ HITBOX: Đè lên ảnh */
+        #cvs {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+        
+        .row { display:flex; justify-content: space-between; align-items: center; font-size: 12px; }
+        label { color:#aaa; width: 80px; }
+        input[type=range] { flex:1; margin: 0 10px; accent-color: #00e676; }
+        .val { color: cyan; font-weight: bold; width: 40px; text-align: right; }
+        
+        textarea { width: 100%; height: 120px; background: #000; color: #0f0; border: 1px solid #444; font-size: 11px; font-family: monospace; resize: none; padding:5px; margin-top: auto;}
+        select { width:100%; padding:8px; background:#111; color:#fff; border:1px solid #555; margin-bottom:10px; font-weight: bold;}
+        h3, h4 { margin:0; color: #00e676; border-bottom:1px solid #444; padding-bottom:5px; }
+        
+        .warn { font-size: 11px; color: #ff9800; margin-bottom: 10px; font-style: italic;}
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <h3>🔴 LIVE GIF EDITOR V3</h3>
+    <div class="warn">Giờ ảnh là GIF thật, hãy kéo hitbox bao trọn khoảnh khắc ảnh phình to nhất.</div>
+    
+    <select id="objType" onchange="changeObj()">
+        <option value="body">1. Snake Body (Static)</option>
+        <option value="head">2. Snake Head (GIF)</option>
+        <option value="skill">3. Skill Ghost (GIF) [Scale 1.6]</option>
+        <option value="player">4. Player Dragon (Img)</option>
+    </select>
+
+    <!-- HITBOX LOGIC -->
+    <h4>🔶 HITBOX (Khung Đỏ)</h4>
+    <div class="row"><label>Width</label><input type="range" id="w" min="10" max="1500" oninput="update()"><span class="val" id="vw">0</span></div>
+    <div class="row"><label>Height</label><input type="range" id="h" min="10" max="800" oninput="update()"><span class="val" id="vh">0</span></div>
+    <div class="row"><label>Hitbox X</label><input type="range" id="dx" min="-600" max="600" oninput="update()"><span class="val" id="vdx">0</span></div>
+    <div class="row"><label>Hitbox Y</label><input type="range" id="dy" min="-600" max="600" oninput="update()"><span class="val" id="vdy">0</span></div>
+
+    <!-- GAME VISUAL SIMULATION -->
+    <h4 style="margin-top:20px; color:#ffeb3b">👁️ ẢNH HIỂN THỊ (GIF)</h4>
+    <div class="row"><label>Image Size</label><input type="range" id="dispSize" min="50" max="1500" oninput="update()"><span class="val" id="vDispSize">0</span></div>
+    <div class="row"><label>Scale</label><input type="range" id="dispScale" min="0.1" max="3.0" step="0.1" oninput="update()"><span class="val" id="vDispScale">1.0</span></div>
+    <div class="row"><label>Rotation</label><input type="range" id="dispRot" min="-180" max="180" step="1" oninput="update()"><span class="val" id="vDispRot">0</span></div>
+
+    <h4 style="margin-top:20px">💾 JSON CODE</h4>
+    <textarea id="output" readonly onclick="this.select()"></textarea>
+</div>
+
+<div class="preview-container">
+    <!-- ẢNH GIF SỐNG (IMG TAG) -->
+    <img id="refImage" src="">
+    <!-- LỚP VẼ HITBOX -->
+    <canvas id="cvs" width="1200" height="900"></canvas>
+    
+    <div style="position:absolute; top:10px; left:10px; color:lime; font-size:12px; pointer-events:none; text-shadow: 1px 1px 2px black;">
+        [TÂM MÀN HÌNH LÀ ĐIỂM NEO LOGIC (0,0)]
+    </div>
+</div>
+
+<script>
+    // THÔNG SỐ KHỚP VỚI GAME CỦA BẠN
+    // Lưu ý: dispSize ở đây là Width, tôi sẽ cho Height auto để giữ tỉ lệ ảnh GIF
+    const DEFAULTS = {
+        body:   { src: 'Image/body.png', w: 900, h: 220, dx: 0, dy: 10,   dispSize: 1000, rot: 3,  scale: 1.0 },
+        head:   { src: 'Image/head.gif', w: 350, h: 300, dx: 0, dy: 30,   dispSize: 450,  rot: -4, scale: 1.0 },
+        // Boss Ghost scale 1.6 như file code game
+        skill:  { src: 'Image/head.gif', w: 550, h: 500, dx: 0, dy: 0,    dispSize: 500,  rot: 0,  scale: 1.6 }, 
+        player: { src: 'Image/dragon.png', w: 50, h: 50, dx: 0, dy: 0,    dispSize: 80,   rot: 0,  scale: 1.0 }
+    };
+
+    const ctx = document.getElementById('cvs').getContext('2d');
+    const refImg = document.getElementById('refImage');
+    let currentKey = 'body';
+    
+    // Copy data to editable object
+    let D = JSON.parse(JSON.stringify(DEFAULTS));
+
+    function init() {
+        changeObj();
+    }
+
+    function changeObj() {
+        currentKey = document.getElementById('objType').value;
+        const d = D[currentKey];
+
+        // Đổi nguồn ảnh thật
+        refImg.src = DEFAULTS[currentKey].src;
+        // Reset animation GIF bằng cách reload src (mẹo nhỏ)
+        let cleanSrc = refImg.src; refImg.src = ""; refImg.src = cleanSrc;
+
+        // Set giá trị vào input
+        setVal('w', d.w); setVal('h', d.h); setVal('dx', d.dx); setVal('dy', d.dy);
+        setVal('dispSize', d.dispSize); setVal('dispScale', d.scale); setVal('dispRot', d.rot);
+
+        update();
+    }
+    
+    function setVal(id, v) { 
+        document.getElementById(id).value = v; 
+        if(document.getElementById('v'+id.charAt(0).toUpperCase() + id.slice(1))) {
+             document.getElementById('v'+id.charAt(0).toUpperCase() + id.slice(1)).innerText = v;
+        }
+    }
+
+    function getVal(id) { return parseFloat(document.getElementById(id).value); }
+
+    function update() {
+        const d = D[currentKey];
+        // 1. Nhận giá trị
+        d.w = parseInt(getVal('w'));
+        d.h = parseInt(getVal('h'));
+        d.dx = parseInt(getVal('dx'));
+        d.dy = parseInt(getVal('dy'));
+        d.dispSize = parseInt(getVal('dispSize'));
+        d.scale = getVal('dispScale');
+        d.rot = parseInt(getVal('dispRot'));
+
+        // 2. Update Label UI
+        document.getElementById('vw').innerText = d.w; document.getElementById('vh').innerText = d.h;
+        document.getElementById('vdx').innerText = d.dx; document.getElementById('vdy').innerText = d.dy;
+        document.getElementById('vDispSize').innerText = d.dispSize;
+        document.getElementById('vDispScale').innerText = d.scale;
+        document.getElementById('vDispRot').innerText = d.rot + '°';
+
+        // 3. APPLY STYLE CHO ẢNH (DOM)
+        // Tâm ảnh đặt tại 50% 50% của khung
+        // Dùng CSS Transform để Xoay & Scale y chang logic Canvas
+        refImg.style.width = d.dispSize + 'px';
+        refImg.style.height = 'auto'; // Auto height để ảnh không bị méo
+        
+        // CÔNG THỨC CSS MATCH VỚI LOGIC CANVAS:
+        // translate(-50%, -50%) để đưa tâm ảnh về đúng điểm neo
+        refImg.style.transform = `translate(-50%, -50%) rotate(${d.rot}deg) scale(${d.scale})`;
+
+        // 4. VẼ HITBOX LÊN CANVAS
+        drawCanvas(d);
+
+        // 5. XUẤT CODE JSON
+        let out = `const HITBOX_CFG = {\n`;
+        for(let k in DEFAULTS) {
+            let p = D[k];
+            // Body thì mình chỉ định W, H còn Skill Ghost scale nên w, h khác
+            out += `    ${k}: { w: ${p.w}, h: ${p.h}, dx: ${p.dx}, dy: ${p.dy} },\n`;
+        }
+        out += `};`;
+        document.getElementById('output').value = out;
+    }
+
+    function drawCanvas(d) {
+        // Clear canvas
+        ctx.clearRect(0,0, 1200, 900);
+        
+        // Center của Canvas (phải trùng với center của khung chứa div.preview-container)
+        // Vì canvas w=1200, h=900 -> Center = 600, 450
+        const cx = 600, cy = 450;
+
+        // Vẽ Tâm Neo (Điểm Xanh)
+        ctx.fillStyle = '#00e676';
+        ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill();
+        ctx.moveTo(cx-1000, cy); ctx.lineTo(cx+1000, cy);
+        ctx.moveTo(cx, cy-1000); ctx.lineTo(cx, cy+1000);
+        ctx.strokeStyle='rgba(0, 230, 118, 0.3)'; ctx.lineWidth=1; ctx.stroke();
+
+        // Vẽ Khung Hitbox
+        ctx.strokeStyle = '#ff3d00'; // Màu đỏ cam
+        ctx.lineWidth = 4;
+        ctx.fillStyle = 'rgba(255, 61, 0, 0.25)'; // Mờ bên trong
+
+        // Tính tọa độ vẽ (Box AABB không xoay)
+        // cx + dx - w/2
+        let bx = cx + d.dx - d.w/2;
+        let by = cy + d.dy - d.h/2;
+        
+        ctx.fillRect(bx, by, d.w, d.h);
+        ctx.strokeRect(bx, by, d.w, d.h);
+
+        // Chú thích
+        ctx.fillStyle = 'white'; ctx.font="14px monospace";
+        ctx.fillText(`HITBOX: ${d.w}x${d.h}`, bx, by - 10);
+    }
+    
+    // Mẹo nhỏ: CSS chỉnh preview-container canh giữa refImage
+    // refImg position absolute top 50% left 50%.
+    // canvas cx, cy cũng phải tương ứng visual center của div.
+
+    init();
+</script>
+</body>
+</html>
