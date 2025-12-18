@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Visual Editor (GIF Realtime)</title>
+    <style>
+        body { display: flex; background: #222; color: #fff; font-family: 'Segoe UI', sans-serif; margin:0; height: 100vh; overflow: hidden;}
+        
+        /* Bảng điều khiển */
+        .controls { width: 400px; background: #2b2b2b; padding: 20px; overflow-y: auto; border-right: 2px solid #000; display: flex; flex-direction: column; gap: 8px; z-index: 10; }
+        
+        /* Màn hình hiển thị */
+        .viewport { flex: 1; position: relative; background: #111; overflow: hidden; display: flex; align-items: center; justify-content: center;}
+        canvas { box-shadow: 0 0 20px rgba(0,0,0,0.5); display: block;}
+        
+        /* --- LỚP ẢNH GIF ĐÈ LÊN (QUAN TRỌNG) --- */
+        .boss-img-editor {
+            position: absolute;
+            pointer-events: none; /* Bấm xuyên qua */
+            image-rendering: pixelated;
+            transform-origin: center center;
+            z-index: 5;
+        }
+
+        /* UI Styles */
+        .row { margin-bottom: 5px; }
+        .row.check { display: flex; align-items: center; justify-content: space-between; background: #444; padding: 8px; border-radius: 4px; border: 1px solid #666; }
+        label { display: flex; justify-content: space-between; color: #ccc; font-size: 0.85em; margin-bottom: 2px; }
+        .val-disp { color: cyan; font-weight: bold; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        input[type=checkbox] { width: 20px; height: 20px; }
+        h3 { color: #f90; margin: 15px 0 5px; border-top: 1px solid #555; padding-top: 10px; font-size: 1.1em; letter-spacing: 1px;}
+        button { width: 100%; padding: 10px; margin-top: 5px; cursor: pointer; font-weight: bold; border-radius: 4px; border:none;}
+        .cam-controls { background: #3a3a3a; padding: 10px; border-radius: 5px; border: 1px solid #555; margin-bottom: 10px;}
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <h2 style="margin:0 0 10px 0; text-align:center; color: #0f0; border-bottom: 1px solid #0f0; padding-bottom: 10px;">EDITOR (GIF REALTIME)</h2>
+    
+    <div class="cam-controls">
+        <label style="color:cyan;">🎥 Camera X</label>
+        <input type="range" min="-3000" max="1000" value="0" oninput="camX = parseFloat(this.value)">
+    </div>
+
+    <button onclick="saveToLS()" style="background: linear-gradient(45deg, #28a745, #20c997); color:white;">💾 LƯU CẤU HÌNH</button>
+    <button onclick="loadFromLS()" style="background: orange; color:black;">🔄 Load Lại</button>
+
+    <h3 style="color:cyan">1. RẮN TRÊN (Snake 1)</h3> <div id="s1_ctrl"></div>
+    <h3 style="color:orange">2. RẮN DƯỚI (Snake 2)</h3> <div id="s2_ctrl"></div>
+    <h3 style="color:#d63384">3. BOSS TO</h3> <div id="boss_ctrl"></div>
+</div>
+
+<div class="viewport" id="vp">
+    <canvas id="cvs"></canvas>
+    
+    <!-- 3 CÁI ĐẦU RẮN THẬT (GIF) -->
+    <!-- Src trỏ đúng file ảnh GIF trong máy của bạn -->
+    <img id="visHead1" src="assets/images/head_flip.gif" class="boss-img-editor">
+    <img id="visHead2" src="assets/images/head.gif" class="boss-img-editor">
+    <img id="visHeadBoss" src="assets/images/head.gif" class="boss-img-editor">
+
+    <div style="position: absolute; bottom: 10px; left: 10px; color: lime; background: rgba(0,0,0,0.7); padding: 5px; border: 1px solid lime;"> KHUNG XANH = MÀN HÌNH GAME </div>
+</div>
+
+<script>
+    // --- DỮ LIỆU MẶC ĐỊNH ---
+    const DEFAULT = {
+        snake1: { gap: 920, yPos: 130, bodyW: 900, bodyH: 250, bodyRot: 3, headW: 560, headH: 450, headRot: 0, headOffX: 50, headOffY: 0, flipped: true },
+        snake2: { gap: 920, yPos: 130, bodyW: 900, bodyH: 250, bodyRot: -3, headW: 560, headH: 450, headRot: 0, headOffX: 50, headOffY: 0, flipped: false },
+        bigBoss: { size: 500, posX: 0.95, posY: 0.5 }
+    };
+    
+    let CFG = JSON.parse(JSON.stringify(DEFAULT));
+    let camX = 0; 
+
+    // Chỉ cần load ảnh BODY để vẽ Canvas (đầu dùng thẻ img rồi)
+    const imgBody = new Image(); 
+    imgBody.src = 'assets/images/body.png';
+
+    // DOM ELEMENTS CHO ĐẦU
+    const elH1 = document.getElementById('visHead1');
+    const elH2 = document.getElementById('visHead2');
+    const elHB = document.getElementById('visHeadBoss');
+
+    // --- SINH UI ---
+    function generateSliders(targetDiv, category) {
+        const parent = document.getElementById(targetDiv); parent.innerHTML = ''; 
+        
+        // Flip
+        const d1 = document.createElement('div'); d1.className='row check';
+        d1.innerHTML = `<span>🔁 Lật đầu (Flip)?</span><input type="checkbox" ${CFG[category].flipped?'checked':''} onchange="updateBool('${category}', 'flipped', this.checked)">`;
+        parent.appendChild(d1);
+
+        // Sliders
+        const params = [
+            { k:'yPos', n:'Y (Cách mép)', min:0, max:600 },
+            { k:'bodyW', n:'Thân Rộng', min:100, max:2000 }, { k:'bodyH', n:'Thân Cao', min:50, max:800 },
+            { k:'gap', n:'Khoảng cách', min:100, max:1500 }, { k:'bodyRot', n:'Xoay Thân', min:-180, max:180 },
+            { k:'headW', n:'Đầu Rộng', min:100, max:1000 }, { k:'headH', n:'Đầu Cao', min:100, max:1000 },
+            { k:'headOffX', n:'Off X', min:-500, max:800 }, { k:'headOffY', n:'Off Y', min:-500, max:500 },
+            { k:'headRot', n:'Xoay Đầu', min:-360, max:360 }
+        ];
+        params.forEach(p=>{
+            let d=document.createElement('div'); d.className='row';
+            d.innerHTML=`<label>${p.n} <span id="v_${category}_${p.k}" class="val-disp">${CFG[category][p.k]}</span></label>
+            <input type="range" min="${p.min}" max="${p.max}" value="${CFG[category][p.k]}" oninput="updVal('${category}','${p.k}',this.value)">`;
+            parent.appendChild(d);
+        });
+    }
+    function generateBossUI() {
+        const p = document.getElementById('boss_ctrl'); p.innerHTML='';
+        [{k:'size',n:'Size',max:1500},{k:'posX',n:'X',max:1.5,s:0.01},{k:'posY',n:'Y',max:1,s:0.01}].forEach(z=>{
+            let d=document.createElement('div'); d.className='row';
+            d.innerHTML=`<label>${z.n} <span id="v_bigBoss_${z.k}" class="val-disp">${CFG.bigBoss[z.k]}</span></label>
+            <input type="range" min="0" max="${z.max}" step="${z.s||1}" value="${CFG.bigBoss[z.k]}" oninput="updVal('bigBoss','${z.k}',this.value)">`;
+            p.appendChild(d);
+        });
+    }
+    function updVal(c,k,v){ CFG[c][k]=parseFloat(v); document.getElementById(`v_${c}_${k}`).innerText=v; }
+    function updateBool(c,k,v){ CFG[c][k]=v; }
+
+    // --- LOOP ---
+    const cvs = document.getElementById('cvs'); 
+    const ctx = cvs.getContext('2d');
+    
+    function resize() {
+        cvs.width = document.getElementById('vp').clientWidth;
+        cvs.height = document.getElementById('vp').clientHeight;
+    }
+    window.onresize = resize;
+
+    // Helper: Cập nhật CSS cho thẻ IMG (Head)
+    // dx, dy là toạ độ TÂM
+    function updateDOMHead(el, dx, dy, w, h, deg, flipped) {
+        if(!el) return;
+        // Chuyển từ toạ độ tâm sang góc trái trên + Camera Offset
+        // Tính camera X vào luôn vị trí left
+        let finalLeft = dx - (w/2) + camX; // QUAN TRỌNG: + camX vì thẻ img trôi theo khung hình
+        let finalTop  = dy - (h/2);
+
+        // Tính tâm của Viewport để căn chỉnh? 
+        // Vì canvas position relative, thẻ img absolute top 0 left 0 của .viewport
+        // Tọa độ vẽ canvas đã translate camX, nhưng DOM thì không. 
+        // Nên ta phải cộng tay camX vào left.
+
+        el.style.width = w + 'px';
+        el.style.height = h + 'px';
+        el.style.left = finalLeft + 'px';
+        el.style.top = finalTop + 'px';
+        
+        let scaleX = flipped ? -1 : 1;
+        el.style.transform = `scaleX(${scaleX}) rotate(${deg}deg)`;
+    }
+
+    function drawBodyRot(img, x, y, w, h, deg) {
+        if(!img.complete) return;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(deg*Math.PI/180);
+        ctx.drawImage(img, -w/2, -h/2, w, h);
+        ctx.restore();
+    }
+
+    function loop() {
+        ctx.fillStyle='#000'; ctx.fillRect(0,0,cvs.width, cvs.height);
+        
+        // 1. VẼ CANVAS (THÂN + KHUNG)
+        ctx.save();
+        ctx.translate(camX, 0); // Di chuyển camera cho Canvas
+        
+        // Khung Game
+        ctx.strokeStyle='#0f0'; ctx.lineWidth=3; ctx.strokeRect(0,0,cvs.width, cvs.height);
+        ctx.fillStyle='rgba(0,50,0,0.2)'; ctx.fillRect(0,0,cvs.width, cvs.height);
+
+        // --- SNAKE 1 (TRÊN) ---
+        let S1 = CFG.snake1;
+        let startX1 = cvs.width * 0.9;
+        // Thân
+        for(let i=0; i<60; i++) drawBodyRot(imgBody, startX1 + (i*S1.gap), S1.yPos, S1.bodyW, S1.bodyH, S1.bodyRot);
+        
+        // --- SNAKE 2 (DƯỚI) ---
+        let S2 = CFG.snake2;
+        let startX2 = cvs.width * 0.1;
+        // Thân
+        for(let i=0; i<60; i++) drawBodyRot(imgBody, startX2 - (i*S2.gap), cvs.height - S2.yPos, S2.bodyW, S2.bodyH, S2.bodyRot);
+
+        ctx.restore(); // Kết thúc vẽ Canvas
+
+        // 2. CẬP NHẬT DOM ELEMENTS (ĐẦU) - NẰM NGOÀI LOGIC CANVAS TRANSLATE
+        // Do Canvas translate chỉ ảnh hưởng nét vẽ, không ảnh hưởng DOM
+        // Ta phải cộng thủ công camX vào vị trí
+
+        // Vị trí Head 1 (Tính toán như cũ)
+        let hx1 = startX1 - S1.headOffX; 
+        let hy1 = S1.yPos + S1.headOffY;
+        updateDOMHead(elH1, hx1, hy1, S1.headW, S1.headH, S1.headRot, S1.flipped);
+
+        // Vị trí Head 2
+        let hx2 = startX2 + S2.headOffX;
+        let hy2 = (cvs.height - S2.yPos) + S2.headOffY;
+        updateDOMHead(elH2, hx2, hy2, S2.headW, S2.headH, S2.headRot, S2.flipped);
+
+        // Vị trí Boss To
+        let B = CFG.bigBoss;
+        let bx = cvs.width * B.posX;
+        let by = cvs.height * B.posY;
+        updateDOMHead(elHB, bx, by, B.size, B.size, 0, false);
+
+        requestAnimationFrame(loop);
+    }
+
+    function saveToLS() { localStorage.setItem('flappyBossVisual', JSON.stringify(CFG)); alert('ĐÃ LƯU!'); }
+    function loadFromLS() {
+        const r=localStorage.getItem('flappyBossVisual');
+        if(r) { try { let p=JSON.parse(r); if(p.snake1) CFG=p; } catch(e){} }
+        generateSliders('s1_ctrl', 'snake1');
+        generateSliders('s2_ctrl', 'snake2');
+        generateBossUI();
+    }
+
+    setTimeout(()=>{ resize(); loadFromLS(); }, 100);
+    loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hitbox Editor</title>
+    <style>
+        body { background: #111; color: white; display: flex; font-family: monospace; }
+        .panel { width: 300px; padding: 20px; background: #222; height: 100vh; }
+        .view { flex: 1; background: #000; position: relative; display: flex; justify-content: center; align-items: center; }
+        canvas { border: 1px solid green; }
+        .grp { border-bottom: 1px solid #444; margin-bottom: 15px; padding-bottom: 10px; }
+        h3 { margin-top:0; color: lime;}
+        input { width: 80px; background:#000; color:lime; border:1px solid #555; }
+        button { padding: 10px; width: 100%; margin-top:20px; font-weight: bold; background: lime; cursor:pointer;}
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h2>📦 HITBOX TUNER</h2>
+        <select id="selObj" onchange="currObj=this.value" style="width:100%; padding:10px; margin-bottom:20px;">
+            <option value="body">1. Thân Rắn (Body)</option>
+            <option value="head">2. Đầu Rắn (Head)</option>
+            <option value="skill">3. Big Boss (Ghost)</option>
+            <option value="player">4. Người chơi (Dragon)</option>
+        </select>
+
+        <div class="grp">
+            <p>Width: <input type="number" id="w" oninput="upHb()"></p>
+            <p>Height: <input type="number" id="h" oninput="upHb()"></p>
+            <p>Off X: <input type="number" id="dx" oninput="upHb()"></p>
+            <p>Off Y: <input type="number" id="dy" oninput="upHb()"></p>
+        </div>
+        <button onclick="save()">LƯU HITBOX</button>
+        <div id="savedMsg" style="color:lime; margin-top:10px; display:none">Đã Lưu!</div>
+    </div>
+    <div class="view">
+        <canvas id="c" width="800" height="600"></canvas>
+    </div>
+
+<script>
+    // LOAD EXISTING OR DEFAULT
+    const DEF_HB = {
+        body: { w: 900, h: 250, dx: 0, dy: 10 },
+        head: { w: 300, h: 500, dx: 10, dy: 10 },
+        skill: { w: 605, h: 800, dx: 15, dy: -12 },
+        player: { w: 45, h: 45, dx: 0, dy: 0 },
+    };
+    let DATA = JSON.parse(localStorage.getItem('flappyHitboxCfg')) || DEF_HB;
+
+    // Assets
+    const imgs = { 
+        body: new Image(), head: new Image(), skill: new Image(), player: new Image()
+    };
+    imgs.body.src = 'assets/images/body.png';
+    imgs.head.src = 'assets/images/head.gif';
+    imgs.skill.src = 'assets/images/head.gif'; // Big boss
+    imgs.player.src = 'assets/images/dragon.png';
+
+    let currObj = 'body';
+    const cvs = document.getElementById('c');
+    const ctx = cvs.getContext('2d');
+
+    // Sync Input
+    function loadInputs() {
+        const t = DATA[currObj];
+        document.getElementById('w').value = t.w;
+        document.getElementById('h').value = t.h;
+        document.getElementById('dx').value = t.dx;
+        document.getElementById('dy').value = t.dy;
+    }
+    loadInputs();
+
+    function upHb() {
+        const t = DATA[currObj];
+        t.w = parseFloat(document.getElementById('w').value);
+        t.h = parseFloat(document.getElementById('h').value);
+        t.dx = parseFloat(document.getElementById('dx').value);
+        t.dy = parseFloat(document.getElementById('dy').value);
+    }
+
+    function save() {
+        // Mẹo: Trong script.js game chính, bạn cần sửa dòng đọc hitbox thành đọc từ localStorage này
+        // Hiện tại script.js đang dùng cứng. 
+        // Tôi sẽ hướng dẫn sửa script.js để đọc cái này.
+        alert("Copy đoạn JSON này thay vào window.HITBOX_CFG trong script.js (Vì Game chưa có chức năng đọc Hitbox động, nhưng copy tay sẽ an toàn hơn): \n\n" + JSON.stringify(DATA));
+    }
+
+    // DRAW LOOP
+    function draw() {
+        ctx.clearRect(0,0, cvs.width, cvs.height);
+        ctx.fillStyle = '#222'; ctx.fillRect(0,0, cvs.width, cvs.height);
+        
+        // Vẽ lưới tâm
+        const cx = cvs.width/2; const cy = cvs.height/2;
+        ctx.strokeStyle='#444'; ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,cvs.height); ctx.moveTo(0,cy); ctx.lineTo(cvs.width, cy); ctx.stroke();
+
+        // 1. Vẽ Ảnh (Center)
+        const img = imgs[currObj];
+        if(img.complete) {
+            let s = (currObj === 'player') ? 2 : 0.6;
+            
+            // GIẢ LẬP GÓC XOAY (Ví dụ Body nghiêng 3 độ)
+            let rot = (currObj==='body') ? 3 : 0; 
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(rot * Math.PI/180); // Xoay hình
+            
+            // Vẽ Ảnh (Lệch tâm để rotate quanh giữa)
+            let iw = img.width * s / (currObj.includes('head')?74:1); // Chia 74 frame nếu là head
+            let ih = img.height * s;
+            
+            // Crop frame 1 để hiện
+            ctx.drawImage(img, 0,0,img.width/(currObj.includes('head')?74:1),img.height, -iw/2, -ih/2, iw, ih);
+
+            // VẼ HITBOX XOAY THEO
+            const hb = DATA[currObj];
+            ctx.strokeStyle = 'red'; ctx.lineWidth = 2; ctx.fillStyle = 'rgba(255,0,0,0.3)';
+            
+            // Box tính từ tâm
+            ctx.beginPath();
+            ctx.rect(hb.dx - hb.w/2, hb.dy - hb.h/2, hb.w, hb.h);
+            ctx.stroke(); ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        loadInputs(); // Refresh value (dirty way but works)
+        requestAnimationFrame(draw);
+    }
+    draw();
+</script>
+</body>
+</html>

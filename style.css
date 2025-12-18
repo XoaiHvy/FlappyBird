@@ -584,3 +584,12 @@ body {
     background: red;
     transition: width 0.2s;
 }
+.boss-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 0; height: 0; /* JS sẽ chỉnh lại */
+    pointer-events: none; /* Cho chuột bấm xuyên qua */
+    z-index: 5; /* Nằm trên canvas */
+    transform-origin: center center;
+    image-rendering: pixelated; /* Giữ ảnh nét kiểu pixel */
+}

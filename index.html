@@ -129,7 +129,9 @@
         </video>
 
         <canvas id="gameCanvas"></canvas>
-
+        <img id="domSnake1" src="assets/images/head_flip.gif" class="boss-overlay" style="display: none;">
+        <img id="domSnake2" src="assets/images/head.gif"      class="boss-overlay" style="display: none;">
+        <img id="domBigBoss" src="assets/images/head.gif"      class="boss-overlay" style="display: none;">
         <button id="pauseButton" class="game-button" aria-label="Pause">
             <svg class="pause-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
                 <rect x="6" y="5" width="4" height="14" rx="1.5"></rect>
@@ -180,6 +182,195 @@
             </div>
         </div>
     </div>
+    <!-- === DEBUG UI PANEL (Mặc định Ẩn) === -->
+    <div id="debugPanel" style="display: none; position: fixed; top: 10px; right: 10px; width: 300px; max-height: 90vh; overflow-y: auto; background: rgba(0,0,0,0.85); color: #0f0; padding: 15px; border: 1px solid #0f0; border-radius: 8px; font-family: monospace; z-index: 9999;">
+        
+        <h3 style="margin-top:0; border-bottom: 1px solid #555; display: flex; justify-content: space-between;">
+            <span>🔧 DEBUG TOOL</span>
+            <button onclick="window.toggleDebugPanel()" style="background:red; color:white; border:none; cursor:pointer;">X</button>
+        </h3>
+
+        <!-- 1. CÔNG TẮC HITBOX -->
+        <div style="margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
+            <label style="display: flex; align-items: center; cursor: pointer; color: white;">
+                <input type="checkbox" id="chkDrawHitboxes" onchange="window.debugState.isDrawingHitboxes = this.checked">
+                <span style="margin-left: 10px;">⚡ Show Hitboxes (Vẽ khung đỏ)</span>
+            </label>
+            <div style="margin-top:5px; font-size: 0.8em; color: #aaa;">Bật cái này để thấy Hitbox thực tế khi đánh Boss.</div>
+        </div>
+        <div style="margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
+            <label style="display: flex; align-items: center; cursor: pointer; color: gold;">
+                <!-- Mặc định unchecked -->
+                <input type="checkbox" id="chkGodMode" onchange="window.debugState.isGodMode = this.checked">
+                <span style="margin-left: 10px;">🛡️ GOD MODE (Bất Tử)</span>
+            </label>
+            <div style="margin-top:5px; font-size: 0.8em; color: #aaa;">Bật cái này để không bao giờ chết (Game Over bị vô hiệu).</div>
+        </div>
+        <div style="margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
+            <label style="display: flex; align-items: center; cursor: pointer; color: #00ffff;">
+                <input type="checkbox" onchange="window.debugState.isBossFrozen = this.checked">
+                <span style="margin-left: 10px;">❄️ FREEZE BOSS (Đóng băng)</span>
+            </label>
+            <div style="margin-top:5px; font-size: 0.8em; color: #aaa;">Dừng boss đứng im để soi kỹ từng chi tiết.</div>
+        </div>
+        <!-- 2. TUNING CONFIG (Chỉnh sửa trực tiếp BOSS_CFG) -->
+        <h4 style="color: yellow; margin: 10px 0 5px;">BOSS CONFIG</h4>
+        <div class="debug-row" style="margin-bottom:5px;">
+            <label>Scroll Speed: <span id="val_speed"></span></label>
+            <input type="range" min="1" max="5" step="0.1" style="width:100%" 
+                oninput="BOSS_CFG.scrollSpeed = parseFloat(this.value); document.getElementById('val_speed').innerText = this.value">
+        </div>
+        
+        <!-- 3. HITBOX TUNING (Chỉnh sửa HITBOX_CFG) -->
+        <h4 style="color: cyan; margin: 10px 0 5px;">HITBOX OFFSET</h4>
+        <label>Chọn Part:</label>
+        <select id="selHbPart" onchange="window.updateDebugInputs()" style="width: 100%; background: #333; color: white; margin-bottom: 5px;">
+            <option value="body">Body</option>
+            <option value="head">Head</option>
+            <option value="skill">Skill (Ghost)</option>
+        </select>
+        
+        <div class="debug-row">
+            Width: <input type="number" id="inp_w" onchange="window.applyHitboxChange()">
+        </div>
+        <div class="debug-row">
+            Height: <input type="number" id="inp_h" onchange="window.applyHitboxChange()">
+        </div>
+        <div class="debug-row">
+            Offset X: <input type="number" id="inp_dx" onchange="window.applyHitboxChange()">
+        </div>
+        <div class="debug-row">
+            Offset Y: <input type="number" id="inp_dy" onchange="window.applyHitboxChange()">
+        </div>
+
+        <button onclick="console.log(JSON.stringify(window.HITBOX_CFG, null, 2))" style="width:100%; margin-top: 10px; background: #333; color: #0f0; border: 1px solid #0f0; cursor: pointer; padding: 5px;">
+            🖨️ In Config ra Console
+        </button>
+        <h4 style="color: #bc13fe; margin: 15px 0 5px; border-top: 1px solid #555; padding-top: 10px;">🐍 VISUAL EDITOR (BOSS)</h4>
+
+        <!-- TABS (Tùy chọn cho gọn, ở đây làm danh sách dọc cho dễ) -->
+
+        <!-- SECTION: RẮN CON (Thân & Đầu nhỏ) -->
+        <details open>
+            <summary style="cursor:pointer; color:#0ff;">Small Snake Settings</summary>
+            
+            <!-- VỊ TRÍ (Thêm mới để sửa lỗi rồng chìm) -->
+            <div class="debug-row">Y TOP (Khoảng cách mép trên): <span id="v_yt"></span> <input type="range" min="0" max="600" id="rng_yt" oninput="upVis('yTop', this.value)"></div>
+            <div class="debug-row">Y BOT (Khoảng cách mép dưới): <span id="v_yb"></span> <input type="range" min="0" max="600" id="rng_yb" oninput="upVis('yBot', this.value)"></div>
+            <hr style="border-color:#444">
+
+            <!-- Body Size -->
+            <div class="debug-row">Body W: <span id="v_bw"></span> <input type="range" min="100" max="2000" id="rng_bw" oninput="upVis('bodyW', this.value)"></div>
+            <div class="debug-row">Body H: <span id="v_bh"></span> <input type="range" min="50" max="1000" id="rng_bh" oninput="upVis('bodyH', this.value)"></div>
+            <div class="debug-row">Body Gap: <span id="v_bg"></span> <input type="range" min="100" max="1500" id="rng_bg" oninput="upVis('gap', this.value)"></div>
+            <div class="debug-row">Body Rot: <span id="v_br"></span> <input type="range" min="-180" max="180" step="1" id="rng_br" oninput="upVis('bodyRot', this.value)"></div>
+
+            <hr style="border-color:#444">
+
+            <!-- Head Size -->
+            <div class="debug-row">Head W: <span id="v_hw"></span> <input type="range" min="100" max="1000" id="rng_hw" oninput="upVis('headW', this.value)"></div>
+            <div class="debug-row">Head H: <span id="v_hh"></span> <input type="range" min="100" max="1000" id="rng_hh" oninput="upVis('headH', this.value)"></div>
+            <div class="debug-row">Head Offset X: <span id="v_hox"></span> <input type="range" min="-500" max="500" id="rng_hox" oninput="upVis('headOffX', this.value)"></div>
+            <div class="debug-row">Head Offset Y: <span id="v_hoy"></span> <input type="range" min="-500" max="500" id="rng_hoy" oninput="upVis('headOffY', this.value)"></div>
+            <div class="debug-row">Head Rot: <span id="v_hr"></span> <input type="range" min="-180" max="180" id="rng_hr" oninput="upVis('headRot', this.value)"></div>
+        </details>
+
+        <!-- SECTION: BOSS LỚN (Thêm mới chỉnh Pos) -->
+        <details>
+            <summary style="cursor:pointer; color:#ff0055;">Big Boss Settings</summary>
+            <div class="debug-row">Size: <span id="v_gs"></span> <input type="range" min="200" max="1500" id="rng_gs" oninput="window.BOSS_VISUAL.bigBoss.size = parseFloat(this.value); document.getElementById('v_gs').innerText=this.value;"></div>
+            
+            <div class="debug-row">Pos X (% màn hình): <span id="v_gpx"></span> 
+                <input type="range" min="0" max="1" step="0.01" id="rng_gpx" oninput="window.BOSS_VISUAL.bigBoss.posX = parseFloat(this.value); document.getElementById('v_gpx').innerText=this.value;">
+            </div>
+            <div class="debug-row">Pos Y (% màn hình): <span id="v_gpy"></span> 
+                <input type="range" min="0" max="1" step="0.01" id="rng_gpy" oninput="window.BOSS_VISUAL.bigBoss.posY = parseFloat(this.value); document.getElementById('v_gpy').innerText=this.value;">
+            </div>
+        </details>
+
+        <!-- Script giữ giá trị (Cập nhật thêm dòng load Y) -->
+        <script>
+        // --- VISUAL EDITOR UTILS ---
+        
+        // Hàm Save
+            function saveAndReload() {
+                localStorage.setItem('flappyBossVisual', JSON.stringify(window.BOSS_VISUAL));
+                alert("Đã lưu cấu hình Boss! (F5 không mất)");
+            }
+
+            // Hàm Reset
+            function resetVisualDefaults() {
+                if(confirm("Về mặc định?")) {
+                    localStorage.removeItem('flappyBossVisual');
+                    location.reload(); 
+                }
+            }
+            
+            // Hàm này được gọi mỗi khi kéo thanh trượt (oninput)
+            function upVis(key, val) {
+                val = parseFloat(val);
+                if(window.BOSS_VISUAL && window.BOSS_VISUAL.snake) {
+                    // Cập nhật vào biến toàn cục ngay lập tức
+                    window.BOSS_VISUAL.snake[key] = val;
+                    
+                    // Cập nhật số hiển thị bên cạnh thanh trượt
+                    let map = {
+                        'bodyW': 'v_bw', 'bodyH': 'v_bh', 'bodyRot': 'v_br', 'gap': 'v_bg',
+                        'headW': 'v_hw', 'headH': 'v_hh', 'headOffX': 'v_hox', 'headOffY': 'v_hoy', 'headRot': 'v_hr',
+                        'yTop': 'v_yt', 'yBot': 'v_yb'
+                    };
+                    if(map[key]) {
+                        let el = document.getElementById(map[key]);
+                        if(el) el.innerText = val;
+                    }
+                }
+            }
+
+            // Hàm này gọi khi mở Debug Panel để đồng bộ số liệu
+            function syncDebugInputs() {
+                if(!window.BOSS_VISUAL) return; 
+                const S = window.BOSS_VISUAL.snake;
+                const G = window.BOSS_VISUAL.bigBoss;
+                
+                const setVal = (id, val, txtId) => {
+                    let el = document.getElementById(id);
+                    if(el) el.value = val;
+                    let txt = document.getElementById(txtId);
+                    if(txt) txt.innerText = val;
+                }
+
+                setVal('rng_bw', S.bodyW, 'v_bw');
+                setVal('rng_bh', S.bodyH, 'v_bh');
+                setVal('rng_br', S.bodyRot, 'v_br');
+                setVal('rng_bg', S.gap, 'v_bg');
+                
+                // Y Pos
+                setVal('rng_yt', S.yTop || 130, 'v_yt');
+                setVal('rng_yb', S.yBot || 130, 'v_yb');
+                
+                // Head
+                setVal('rng_hw', S.headW, 'v_hw');
+                setVal('rng_hh', S.headH, 'v_hh');
+                setVal('rng_hox', S.headOffX, 'v_hox');
+                setVal('rng_hoy', S.headOffY, 'v_hoy');
+                setVal('rng_hr', S.headRot, 'v_hr');
+
+                // Big Boss
+                setVal('rng_gs', G.size, 'v_gs');
+                setVal('rng_gpx', G.posX, 'v_gpx');
+                setVal('rng_gpy', G.posY, 'v_gpy');
+            }
+            
+            // Gắn vào nút mở
+            const oldToggle = window.toggleDebugPanel;
+            window.toggleDebugPanel = function() {
+                if(oldToggle) oldToggle(); // Gọi hàm cũ (bật/tắt div)
+                syncDebugInputs(); // Load dữ liệu
+            };
+        </script>
+    </div>
+
+    <!-- Nút Mở Debug nhỏ ở góc (Chỉ hiện khi hover hoặc cần thiết, mặc định ta ẩn, gọi lệnh console để hiện) -->
     <script src="script.js"></script>
 </body>
 </html>
