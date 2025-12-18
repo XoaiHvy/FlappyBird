@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Aldrich&family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -124,8 +125,14 @@
         </div>
     </div>
     <div id="gameScreen" class="screen">
+        <!-- Video nền thường -->
         <video id="gameBgVideo" loop muted playsinline>
             <source src="assets/videos/game_bg.mp4" type="video/mp4">
+        </video>
+
+        <!-- THÊM DÒNG NÀY: Video nền Boss (Mặc định ẩn) -->
+        <video id="bossVideo" loop muted playsinline style="display:none; opacity:0;">
+            <source src="assets/videos/thephantomleviathan.mp4" type="video/mp4">
         </video>
 
         <canvas id="gameCanvas"></canvas>
@@ -140,8 +147,22 @@
         </button>
 
         <div id="scoreDisplay" class="score-display">Score: 0</div>
-        <div id="bossWarning" class="boss-warning">WARNING!<br>BOSS APPROACHING</div>
-        <div id="bossHpBar"><div id="bossHpFill"></div></div>
+        <div id="warningLayer"></div>
+
+        <!-- BOSS UI CONTAINER (Đã thêm Tên Boss) -->
+        <div id="bossHpBar">
+            <!-- Tên Boss: Bay lơ lửng trên thanh máu -->
+            <div id="bossName">THE PHANTOM LEVIATHAN</div>
+
+            <img id="bossFrame" src="assets/images/BossFrame.png" alt="Boss Frame">
+            
+            <!-- Hộp chứa máu -->
+            <div id="bossHpContainer">
+                <div id="bossHpFill"></div>
+                <!-- Thêm lớp phủ bóng để tạo cảm giác ống thủy tinh (Option) -->
+                <div class="hp-glass-effect"></div>
+            </div>
+        </div>
 
         <!-- pause overlay (single copy) -->
         <div id="pauseOverlay" class="overlay">

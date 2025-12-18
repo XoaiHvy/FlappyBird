@@ -270,61 +270,123 @@ class SnakeHead {
 // 3. CLASS BOSS CONTROLLER (Bộ não của Boss)
 class BossController {
     constructor(w, h) {
-        this.state = 'INTRO'; this.timer = 0; this.visualHp = 0; this.introOpacity = 1; 
-        this.shake = { x: 0, y: 0, force: 0 }; 
-        this.events = { s1: false, s2: false, ghostEnter: false, rev: false };
         this.width = w; this.height = h;
+        // Bắt đầu đếm giờ từ 0
+        this.timer = 0; 
         
+        // Quản lý trạng thái Intro theo từng Phase (0,1,2,3,4) để không bao giờ bị lặp hay nhảy cóc
+        this.introPhase = 0; 
+        
+        this.visualHp = 0; 
+        
+        // Setup 2 rắn con
         this.snakes = [ new SnakeHead(1, w, 0, -1), new SnakeHead(2, w, 0, 1) ];
-        // Khởi tạo Boss To theo đúng Config ngay từ đầu
+        // Khởi tạo Rắn con ở chế độ OFF, chưa chạy vội
+        this.snakes.forEach(s => { s.isActive = false; }); 
+
+        // Config Boss To (Ban đầu giấu nó đi)
         const BC = window.BOSS_VISUAL.bigBoss;
-        this.ghostX = w * 1.5; // Xa màn hình lúc intro
+        // Xuất phát từ rất xa bên phải
+        this.ghostX = w + 800; 
         this.ghostY = h * BC.posY;
+        
+        this.isLeaving = false; 
     }
 
     update(dt) {
         if (window.debugState.isBossFrozen) return; 
-        if (this.shake.force > 0) { this.shake.x = (Math.random()-0.5)*this.shake.force; this.shake.y = (Math.random()-0.5)*this.shake.force; this.shake.force*=0.95; } 
-        else { this.shake.x=0; this.shake.y=0; }
+        this.timer += dt; 
 
-        if (this.state === 'INTRO') this.updateIntro(dt); 
-        else this.updateFight(dt);
-
+        // Luôn cập nhật rắn con (dù nó active hay chưa thì vẫn cần update logic vẽ)
         this.snakes.forEach(s => s.update(dt, this.width));
-    }
 
-    updateIntro(dt) {
-        this.timer += dt; let t = this.timer;
-        if (t > 100 && !this.events.s1) { this.events.s1=true; this.snakes[0].activate(); this.shake.force=12; }
-        if (t > 2000 && !this.events.s2) { this.events.s2=true; this.snakes[1].activate(); this.shake.force=12; }
-        
-        // Boss Bay Vào
-        if (t > 5000) { // Intro ngắn lại chút cho nhanh test
-            if (!this.events.ghostEnter) this.events.ghostEnter = true; 
-            
-            // --- LOGIC BOSS TO FIX ---
-            // Lấy đích đến TỪ CONFIG (Pos X)
-            let targetX = this.width * window.BOSS_VISUAL.bigBoss.posX;
-            // Di chuyển tới đích
-            this.ghostX += (targetX - this.ghostX) * 0.05;
+        // Logic Timeline Intro chuẩn
+        // Giai đoạn 0-16s là Intro. >16s là Fight.
+        if (this.timer < 16000) {
+            this.updateIntroLogic();
+        } else {
+            this.updateFightLogic();
         }
-        if (t > 8000) { this.state = 'FIGHT'; this.visualHp = 100; }
     }
 
-    updateFight(dt) {
-        // --- LOGIC BOSS FIGHT CHUẨN ---
-        // Trong Editor bạn chỉnh Pos X/Y -> Game phải tuân thủ tuyệt đối
+    updateIntroLogic() {
+        const t = this.timer;
+
+        // PHASE 1: RẮN TRÊN (0s -> 1s -> 6s)
+        if (t >= 0 && this.introPhase === 0) {
+            showSpecificWarning('snake1');
+            this.introPhase = 1; // Xong việc 0s
+        }
+        if (t >= 1000 && this.introPhase === 1) {
+            clearWarnings();
+            this.snakes[0].activate(); // Snake 1 lao vào
+            this.introPhase = 2; // Xong việc 1s
+        }
+
+        // PHASE 2: RẮN DƯỚI (6s -> 7s -> 12s)
+        if (t >= 6000 && this.introPhase === 2) {
+            showSpecificWarning('snake2');
+            this.introPhase = 3;
+        }
+        if (t >= 7000 && this.introPhase === 3) {
+            clearWarnings();
+            this.snakes[1].activate(); // Snake 2 lao vào
+            this.introPhase = 4;
+        }
+
+        // PHASE 3: BOSS TO (12s -> 13s -> 16s)
+        if (t >= 12000 && this.introPhase === 4) {
+            this.introPhase = 5;
+        }
+        if (t >= 13000 && this.introPhase === 5) {
+            clearWarnings();
+            // Kích hoạt HP Fade In
+            const bar = document.getElementById('bossHpBar');
+            if(bar) bar.style.opacity = '1';
+            
+            this.introPhase = 6; // Chuyển sang phase Animation
+        }
+
+        // Animation bay vào từ từ (Từ 13s đến 16s)
+        if (t >= 13000) {
+            let targetX = this.width * window.BOSS_VISUAL.bigBoss.posX;
+            
+            // --- SỬA Ở ĐÂY: GIẢM TỪ 0.05 XUỐNG 0.015 ---
+            // Boss sẽ trôi vào cực chậm, tạo cảm giác khổng lồ và nặng nề
+            this.ghostX += (targetX - this.ghostX) * 0.015; 
+            
+            // Máu cũng bơm chậm lại cho khớp nhịp
+            if(this.visualHp < 100) this.visualHp += 0.55; 
+        }
+
+    }
+
+    updateFightLogic() {
         const BC = window.BOSS_VISUAL.bigBoss;
-        
-        let targetX = this.width * BC.posX; // Đích X theo Config
-        let targetY = this.height * BC.posY; // Đích Y theo Config
-        
-        // Easing move (Trôi nhẹ tới đích)
-        this.ghostX += (targetX - this.ghostX) * 0.1;
-        this.ghostY += (targetY - this.ghostY) * 0.1;
+        let targetX = this.width * BC.posX; 
+        let targetY = this.height * BC.posY;
+
+        if (!this.isLeaving) {
+            // -- CHIẾN ĐẤU --
+            // Giữ boss ở vị trí đã config, nhưng cho lắc lư nhẹ
+            this.ghostX += (targetX - this.ghostX) * 0.1;
+            this.ghostY += (targetY - this.ghostY) * 0.1;
+        } else {
+            // -- RÚT LUI --
+            // Bay lên trời nhanh (Tăng tốc độ bay từ 10 -> 25 để nhìn rõ việc nó phóng đi)
+            this.ghostY -= 15; 
+            // Hai con rắn con cũng phải bay theo chủ
+            this.snakes.forEach(s => s.baseY -= 15);
+
+            // Kiểm tra nếu đã bay tít mù khơi thì reset game mode
+            if (this.ghostY < -1500) {
+                // Xóa boss -> Để vòng lặp game ở ngoài (crazyModeTimer) nhận biết và reset quy trình
+                endBossFight();
+            }
+        }
     }
     
-    // ... (Giữ nguyên checkCollision không thay đổi)
+
     checkCollision(playerRect) { 
         if (this.state !== 'FIGHT') return false;
         // Copy lại logic collision cũ của bạn ở đây...
@@ -642,6 +704,8 @@ function startGame() {
     document.addEventListener('keydown', handleKeyPress); 
     gameLoop();
 }
+let screenFadeAlpha = 0; // 0 = trong suốt, 1 = đen xì
+const SCORE_TO_BOSS = 10; // Cột mốc gặp Boss
 
 function resetGame() {
     birdY = GAME_HEIGHT / 2 - BIRD_HEIGHT / 2;
@@ -652,18 +716,26 @@ function resetGame() {
     lastPipeSpawnTime = 0;
     pauseOverlay.classList.remove('visible');
     gameOverOverlay.classList.remove('visible');
-    pipes = [];
     items = [];
     isBossFight = false;
     boss = null;
-    crazyModeTimer = 0; // Quan trọng: Reset timer spawn boss
-    bossHpBar.style.display = 'none';
-    bossWarning.style.display = 'none';
+    crazyModeTimer = 0; 
+    
+    // Reset hiệu ứng HP (Kiểm tra null trước cho an toàn)
+    if (bossHpBar) bossHpBar.style.display = 'none';
+    
+    // --- KHẮC PHỤC LỖI TẠI ĐÂY ---
+    // Code cũ: bossWarning.style.display = 'none'; 
+    // -> Bị lỗi vì thẻ bossWarning đã bị xóa khỏi HTML.
+    
+    // Code mới: Dọn sạch lớp cảnh báo mới
+    const warningLayer = document.getElementById('warningLayer');
+    if (warningLayer) warningLayer.innerHTML = '';
+    // ----------------------------
+
     activeEffects = { shield: false, mini: false };
     bossBullets = [];
-    boss = null;
-    bossHpBar.style.display = 'none';
-    bossWarning.style.display = 'none';
+    screenFadeAlpha = 0; 
 }
 
 function jump() {
@@ -755,47 +827,48 @@ function updateItems() {
         }
     });
 }
+let fadeState = 0; 
 
 function spawnBoss() {
     if (isBossFight || boss) return;
     console.log("!!! SPAWN BOSS !!!");
     isBossFight = true;
     
-    // Khởi tạo Boss mới với kích thước màn hình
     boss = new BossController(canvas.width, canvas.height);
     
-    // Hiển thị UI cảnh báo & HP
-    bossWarning.style.display = 'block';
-    bossHpBar.style.display = 'block';
-    
-    // Ẩn warning sau 3s
-    setTimeout(() => { bossWarning.style.display = 'none'; }, 3000);
+    // --- CHẮC CHẮN DÒNG NÀY LÀ SỐ 0 NHÉ ---
+    boss.timer = 0; 
+    // --------------------------------------
+
+    if (bossHpBar) {
+        bossHpBar.style.display = 'block';
+        bossHpBar.style.opacity = '0';
+    }
 }
 
 function updateBoss() {
     if (!boss) return;
-    
-    // 1. Cập nhật logic boss (dt = 16.67ms)
     boss.update(16.67);
+    if (!boss) return; 
 
-    // 2. Update HP Bar hiển thị
-    // Boss cũ có logic visualHp tăng dần từ 0->100
+    // 2. Update HP Bar (Đã sửa lại để không cần icon GIF nữa)
     const percent = Math.max(0, Math.min(100, boss.visualHp)); 
-    bossHpFill.style.width = percent + '%';
+    if(bossHpFill) bossHpFill.style.width = percent + '%';
     
-    // 3. Check Va chạm Chim vs Boss
+    // --- SỬA LỖI TẠI ĐÂY (Thêm dòng khai báo birdRect) ---
     const birdRect = {
         x: birdX + BIRD_HITBOX_INSET.x,
         y: birdY + BIRD_HITBOX_INSET.y,
         w: BIRD_WIDTH - 2 * BIRD_HITBOX_INSET.x,
         h: BIRD_HEIGHT - 2 * BIRD_HITBOX_INSET.y
     };
+    // ---------------------------------------------------
 
     if (boss.checkCollision(birdRect)) {
         if (activeEffects.shield) {
             activeEffects.shield = false; 
         } else {
-            gameOver('boss_collision'); // <-- Truyền tham số
+            gameOver('boss_collision');
         }
     }
 }
@@ -811,132 +884,119 @@ function endBossFight() {
 function update() {
     if (isPaused || isGameOver) return;
     
-    // 1. Logic Vật lý Chim
+    // --- 1. LOGIC VẬT LÝ CHIM ---
     birdVelocityY += GRAVITY;
     birdY += birdVelocityY;
-    
     const velocityTargetAngle = Math.max(Math.min(birdVelocityY * 7, MAX_DOWN_ANGLE), MAX_UP_ANGLE);
     birdAngle += (velocityTargetAngle - birdAngle) * ANGLE_LERP;
     flapTimer += 16.67;
    
-    // Check va chạm trần/sàn
-    if (birdY < 0) {
-        // Chạm trần
-        if (!window.debugState?.isGodMode) {
-            gameOver('bound_hit'); 
-            return;
-        } else {
-             // Bất tử: giữ lại ở mép trên, reset lực nhảy
-             birdY = 0;
-             birdVelocityY = 0;
-        }
+    if (birdY < 0) { 
+        if (!window.debugState?.isGodMode) { gameOver('bound_hit'); return; } 
+        else { birdY = 0; birdVelocityY = 0; } 
     } 
-    if (birdY + BIRD_HEIGHT > GAME_HEIGHT) {
-        // Chạm sàn
-        if (!window.debugState?.isGodMode) {
-            gameOver('bound_hit');
-            return;
-        } else {
-             // Bất tử: giữ lại ở mép sàn, không cho rơi sâu hơn
-             birdY = GAME_HEIGHT - BIRD_HEIGHT; 
-             birdVelocityY = 0; 
-             // Khi rồng đứng trên sàn, nó sẽ reset tốc độ rơi về 0
-             // Bạn bấm chuột phát là nó bay lên được ngay.
-        }
+    if (birdY + BIRD_HEIGHT > GAME_HEIGHT) { 
+        if (!window.debugState?.isGodMode) { gameOver('bound_hit'); return; } 
+        else { birdY = GAME_HEIGHT - BIRD_HEIGHT; birdVelocityY = 0; } 
     }
-    // Tính thời gian game
     gameTime += 16.67;
 
-    // 2. LOGIC PIPES (Chỉ chạy khi KHÔNG đánh boss)
-    // Nếu đánh boss, ngừng sinh ống nước mới
-    if (!isBossFight) {
-        if (Date.now() - lastPipeSpawnTime > PIPE_SPAWN_INTERVAL) {
-            spawnPipe();
-            lastPipeSpawnTime = Date.now();
-        }
-
-        // Cập nhật vị trí và va chạm Pipes (Code cũ giữ nguyên logic nhưng dọn gọn)
-        const birdRect = {
-            x: birdX + BIRD_HITBOX_INSET.x,
-            y: birdY + BIRD_HITBOX_INSET.y,
-            w: BIRD_WIDTH - 2 * BIRD_HITBOX_INSET.x,
-            h: BIRD_HEIGHT - 2 * BIRD_HITBOX_INSET.y
-        };
-
-        for (let i = 0; i < pipes.length; i++) {
-            let pipe = pipes[i];
-            pipe.x -= PIPE_SPEED;
-
-            const pipeRect = {
-                x: pipe.x + PIPE_HITBOX_INSET.x,
-                y: pipe.y + PIPE_HITBOX_INSET.y,
-                w: pipe.width - 2 * PIPE_HITBOX_INSET.x,
-                h: pipe.height - 2 * PIPE_HITBOX_INSET.y
-            };
-
-            // Check va chạm Pipe
-            if (rectIntersect(birdRect, pipeRect)) {
-                if (activeEffects.shield) {
-                    activeEffects.shield = false;
-                    pipes.splice(i, 1); // Xóa pipe chạm phải
-                    i--; // Lùi index
-                    continue; 
-                } else {
-                    gameOver('pipe_hit'); // <-- Truyền tham số
-                    return;
-                }
-            }
-
-            // Tính điểm
-            if (!pipe.passed && pipe.x + pipe.width < birdX) {
-                pipe.passed = true;
-                if (pipe.type === 'bottom') { 
-                    score++;
-                    scoreDisplay.textContent = `Score: ${score}`;
-                    SFX.score.currentTime = 0; 
-                    SFX.score.play();
-                }
-            }
-        }
-        // Xóa ống nước đã đi qua màn hình
-        pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+    // --- 2. LOGIC CỘT (Ngừng spawn khi đủ điểm) ---
+    const allowSpawnPipes = !isBossFight && (!boss) && (score < SCORE_TO_BOSS);
+    if (allowSpawnPipes && Date.now() - lastPipeSpawnTime > PIPE_SPAWN_INTERVAL) {
+        spawnPipe(); lastPipeSpawnTime = Date.now();
     }
 
-    // 3. LOGIC CRAZY MODE
+    let isTransitionPhase = (currentMode === 'crazy') && (score >= SCORE_TO_BOSS) && (!boss);
+    const birdRect = { x: birdX + BIRD_HITBOX_INSET.x, y: birdY + BIRD_HITBOX_INSET.y, w: BIRD_WIDTH - 2 * BIRD_HITBOX_INSET.x, h: BIRD_HEIGHT - 2 * BIRD_HITBOX_INSET.y };
+
+    for (let i = 0; i < pipes.length; i++) {
+        let pipe = pipes[i];
+        pipe.x -= PIPE_SPEED;
+        // Rút cột đi chỗ khác
+        if (isTransitionPhase) { if (pipe.type === 'top') pipe.y -= 5; else pipe.y += 5; }
+
+        const pipeRect = { x: pipe.x + PIPE_HITBOX_INSET.x, y: pipe.y + PIPE_HITBOX_INSET.y, w: pipe.width - 2 * PIPE_HITBOX_INSET.x, h: pipe.height - 2 * PIPE_HITBOX_INSET.y };
+        let isSafeToPass = (pipe.type === 'top' && pipe.y + pipe.height < 0) || (pipe.type === 'bottom' && pipe.y > GAME_HEIGHT);
+
+        if (!isSafeToPass && rectIntersect(birdRect, pipeRect)) {
+            if (activeEffects.shield) { activeEffects.shield = false; pipes.splice(i, 1); i--; continue; } else { gameOver('pipe_hit'); return; }
+        }
+        if (!pipe.passed && pipe.x + pipe.width < birdX) { 
+            pipe.passed = true; 
+            if (pipe.type === 'bottom') { score++; scoreDisplay.textContent = `Score: ${score}`; SFX.score.currentTime = 0; SFX.score.play(); } 
+        }
+    }
+    pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+
+    // --- 3. LOGIC CRAZY MODE & BOSS SCENE ---
     if (currentMode === 'crazy') {
         crazyModeTimer += 16.67;
         
-        // A. Xử lý Item
-        if (!isBossFight) {
-            spawnItem();
-        }
+        // Item
+        if (!isBossFight && score < SCORE_TO_BOSS) spawnItem();
         updateItems();
 
-        // --- B. KÍCH HOẠT BOSS (SỬA ĐỔI: Dựa theo SCORE) ---
-        
-        // Logic cũ (Time based): if (!isBossFight && crazyModeTimer >= TIME_TO_SPAWN_BOSS) ...
-        
-        // Logic mới (Score based):
-        // Nếu chưa đánh boss VÀ điểm >= 2 (tức là đã qua 2 cột)
-        if (!isBossFight && score >= 0 && !boss) { 
-             spawnBoss();
+        // 3a. BẮT ĐẦU CHUYỂN CẢNH: Màn hình Tối dần
+        if (!isBossFight && score >= SCORE_TO_BOSS && !boss && fadeState === 0) {
+             fadeState = 1; // Vào trạng thái 1
         }
-        // ---------------------------------------------------
 
-        // C. Cập nhật Boss
-        if (boss) {
-            updateBoss();
+        // 3b. STATE 1: Fade Black (0 -> 1)
+        if (fadeState === 1) {
+            screenFadeAlpha += 0.01; 
+            if (screenFadeAlpha >= 1) {
+                screenFadeAlpha = 1;
+                // Khi đã đen thui:
+                // 1. Tắt nền cũ, chuẩn bị nền mới (nhưng chưa hiện)
+                if(gameBgVideo) gameBgVideo.style.display = 'none';
+                const bv = document.getElementById('bossVideo');
+                if(bv) { bv.style.display = 'block'; bv.style.opacity = '0'; bv.play().catch(()=>{}); } 
+
+                // 2. Gọi Boss ra (Timer = 0 -> Nó sẽ chạy Intro: Rắn 1 -> Rắn 2)
+                spawnBoss();
+                
+                // 3. Chuyển sang State 2: Chờ Intro chạy
+                fadeState = 2;
+            }
+        }
+
+        // 3c. STATE 2: Bóng Đêm (Rắn con chạy trên nền đen)
+        if (fadeState === 2 && boss) {
+            // Theo dõi đồng hồ của Boss
+            // BossController.updateIntroLogic() quy định giây thứ 13 là Boss To ra.
+            // Nên ta chờ đến 12.5s thì bắt đầu làm sáng màn hình dần là vừa đẹp.
+            if (boss.timer >= 12500) {
+                fadeState = 3; 
+            }
         }
         
-        // D. Kết thúc Boss (Vẫn giữ theo thời gian đánh boss hoặc có thể sửa tùy ý)
-        if (isBossFight && crazyModeTimer >= (TIME_TO_SPAWN_BOSS + TIME_TO_FIGHT_BOSS)) {
-            // Lưu ý: Nếu muốn boss lặp lại dựa trên điểm số thay vì thời gian,
-            // bạn cần reset 'score' hoặc có biến đếm 'scoreSinceLastBoss'.
-            // Hiện tại ta cứ giữ logic time out để boss biến mất sau 60s đánh nhau.
-            endBossFight();
+        // 3d. STATE 3: Màn hình Sáng lại (Fade In)
+        if (fadeState === 3) {
+            screenFadeAlpha -= 0.01; // Giảm màu đen
+            if (screenFadeAlpha < 0) screenFadeAlpha = 0;
+
+            // Đồng thời hiện Video nền Boss lên
+            const bv = document.getElementById('bossVideo');
+            if (bv) {
+                let currentOp = parseFloat(bv.style.opacity || 0);
+                if (currentOp < 1) bv.style.opacity = (currentOp + 0.01).toString();
+            }
+
+            // Và hiện thanh máu lên
+            if (bossHpBar) {
+                 let currentOp = parseFloat(bossHpBar.style.opacity || 0);
+                 if (currentOp < 1) bossHpBar.style.opacity = (currentOp + 0.01).toString();
+            }
+
+            if (screenFadeAlpha <= 0) {
+                fadeState = 4; // Hoàn tất Intro
+            }
         }
+
+        // LUÔN UPDATE BOSS
+        if (boss) updateBoss();
     }
-    // (Nếu là mode 'normal', đoạn logic trên sẽ bị bỏ qua)
 }
 function playMusic(src) {
     // Nếu bài nhạc mới trùng bài cũ thì không làm gì cả (để nhạc chạy tiếp)
@@ -993,117 +1053,83 @@ function drawRotated(ctx, img, x, y, w, h, angle) {
     ctx.restore();
 }
 function draw() {
+    // 1. Xóa sạch và lấy DOM cần thiết
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    
-    // Lấy DOM Elements (Chỉ lấy 1 lần hoặc cache nếu muốn tối ưu, nhưng ở đây lấy luôn cho gọn)
     const domS1 = document.getElementById('domSnake1');
     const domS2 = document.getElementById('domSnake2');
     const domBB = document.getElementById('domBigBoss');
     const allDoms = [domS1, domS2, domBB];
 
-    // Reset tất cả về ẩn trước (tránh trường hợp game over hình vẫn còn)
-    // Nếu game pause, không ẩn để nhìn thấy boss
-    if(!boss && !isBossFight && !isPaused) {
-        allDoms.forEach(d => { if(d) d.style.display = 'none'; });
+    if (!isPaused && !boss && !isBossFight) { 
+        allDoms.forEach(d => { if(d) d.style.display = 'none'; }); 
     }
 
-    // 1. Vẽ Ống & Items & Chim (Giữ nguyên)
+    // --- LỚP 1: VẼ ỐNG (Sẽ chìm trong bóng tối) ---
     for (let i = 0; i < pipes.length; i++) {
         let p = pipes[i];
         if (p.type === 'top') ctx.drawImage(assets.pipeTop, p.x, p.y, p.width, p.height);
         else ctx.drawImage(assets.pipeBottom, p.x, p.y, p.width, p.height);
     }
+    
+    // --- LỚP 2: VẼ MÀN HÌNH ĐEN (VẼ Ở ĐÂY ĐỂ CHE ỐNG NHƯNG KHÔNG CHE BOSS) ---
+    if (currentMode === 'crazy' && screenFadeAlpha > 0) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${screenFadeAlpha})`; 
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
+
+    // --- LỚP 3: ITEMS & BOSS (NỔI TRÊN NỀN ĐEN) ---
     if (currentMode === 'crazy') {
         items.forEach(it => {
-            if (it.type === 'shield') ctx.fillStyle = 'cyan';
-            else if (it.type === 'bomb') ctx.fillStyle = 'red';
-            else ctx.fillStyle = 'green';
+            if (it.type === 'shield') ctx.fillStyle = 'cyan'; else if (it.type === 'bomb') ctx.fillStyle = 'red'; else ctx.fillStyle = 'green';
             ctx.fillRect(it.x, it.y, it.w, it.h);
         });
     }
 
-    // 2. VẼ BOSS (Phần Thân vẽ Canvas, Phần Đầu chỉnh CSS DOM)
+    // Logic Boss
     if (currentMode === 'crazy' && boss && boss.snakes) {
-        
+        // A. Rắn con
         boss.snakes.forEach(s => {
-            if (!s.isActive) {
-                // Ẩn đầu tương ứng
-                let d = (s.id === 1) ? domS1 : domS2;
-                if(d) d.style.display = 'none';
-                return;
-            };
-
-            const cfg = window.BOSS_VISUAL[(s.id === 1 ? 'snake1' : 'snake2')];
-            const radBody = cfg.bodyRot * (Math.PI / 180);
-            
-            // --- VẼ THÂN TRÊN CANVAS (Giữ nguyên) ---
-            if (assetsExtra.snakeBody) {
-                s.segments.forEach(seg => {
-                    drawRotated(ctx, assetsExtra.snakeBody, seg.x, seg.y, cfg.bodyW, cfg.bodyH, radBody);
-                });
-            }
-
-            // --- VẼ ĐẦU BẰNG DOM GIF (Thay thế code vẽ cũ) ---
-            let domImg = (s.id === 1) ? domS1 : domS2;
-            if (domImg) {
-                domImg.style.display = 'block'; // Hiện lên
-                
-                // 1. Kích thước
-                domImg.style.width = cfg.headW + 'px';
-                domImg.style.height = cfg.headH + 'px';
-
-                // 2. Vị trí (Tọa độ tính y chang Canvas)
-                // Cần trừ 1/2 chiều rộng/cao vì position tính từ góc trên trái, nhưng toạ độ game tính từ tâm
-                let hx = s.headX - cfg.headW/2; 
-                let hy = s.y - cfg.headH/2; 
-
-                // Offset Config
-                if (s.id === 1) hx -= cfg.headOffX; else hx += cfg.headOffX;
-                hy += cfg.headOffY;
-
-                domImg.style.left = hx + 'px';
-                domImg.style.top = hy + 'px';
-
-                // 3. Xoay & Lật (Dùng CSS Transform)
-                let deg = cfg.headRot;
-                let scaleX = (cfg.flipped) ? -1 : 1;
-                
-                // Chuỗi transform CSS: Lật trước, Xoay sau (hoặc ngược lại tuỳ logic bạn muốn)
-                // Lưu ý: CSS rotate là độ (deg), Canvas là radian
-                domImg.style.transform = `scaleX(${scaleX}) rotate(${deg}deg)`;
-                
-                // Logic đổi ảnh nếu có file Flip
-                // Snake 1 mặc định dùng src head_flip trong HTML, Snake 2 dùng head
-                // Bạn có thể đổi src động ở đây nếu muốn:
-                // if (cfg.flipped) domImg.src = 'assets/images/head_flip.gif';
-            }
+             if (!s.isActive) return;
+             const cfg = window.BOSS_VISUAL[(s.id === 1 ? 'snake1' : 'snake2')];
+             
+             // --- VẼ THÂN (Lúc này background đã bị tô đen, nên thân vẽ ở đây sẽ NỔI LÊN) ---
+             const radBody = cfg.bodyRot * (Math.PI / 180);
+             if (assetsExtra.snakeBody) {
+                s.segments.forEach(seg => { drawRotated(ctx, assetsExtra.snakeBody, seg.x, seg.y, cfg.bodyW, cfg.bodyH, radBody); });
+             }
+             
+             // Vẽ Đầu Rắn (DOM - Luôn nổi)
+             let domImg = (s.id === 1) ? domS1 : domS2;
+             if (domImg) { 
+                 domImg.style.display = 'block'; 
+                 domImg.style.width = cfg.headW+'px'; domImg.style.height = cfg.headH+'px';
+                 let hx = s.headX - cfg.headW/2; 
+                 if (s.id===1) hx-=cfg.headOffX; else hx+=cfg.headOffX;
+                 let hy = s.y - cfg.headH/2 + cfg.headOffY; 
+                 domImg.style.left=hx+'px'; domImg.style.top=hy+'px';
+                 domImg.style.transform = `scaleX(${cfg.flipped?-1:1}) rotate(${cfg.headRot}deg)`;
+             }
         });
 
-        // --- BOSS TO ---
-        const BC = window.BOSS_VISUAL.bigBoss;
-        if ((boss.state === 'FIGHT' || boss.events.ghostEnter)) {
-            if(domBB) {
-                domBB.style.display = 'block';
-                domBB.style.width = BC.size + 'px';
-                domBB.style.height = BC.size + 'px';
-                
-                // Tọa độ góc trái trên = Tâm - 1/2 kích thước
-                domBB.style.left = (boss.ghostX - BC.size/2) + 'px';
-                domBB.style.top = (boss.ghostY - BC.size/2) + 'px';
-                
-                // Hiệu ứng nhấp nhô
-                let swayDeg = Math.sin(Date.now() / 500) * 5; // * 5 độ
-                domBB.style.transform = `rotate(${swayDeg}deg)`;
-            }
+        // B. BOSS TO (DOM HEAD) - 13s mới hiện
+        // Chỉ hiện khi timer > 12s (sớm hơn xíu cho chắc)
+        if (boss.timer >= 12000) { 
+             if(domBB) {
+                 const BC = window.BOSS_VISUAL.bigBoss;
+                 domBB.style.display = 'block'; 
+                 domBB.style.width = BC.size + 'px'; 
+                 domBB.style.height = BC.size + 'px';
+                 domBB.style.left = (boss.ghostX - BC.size/2) + 'px'; 
+                 domBB.style.top = (boss.ghostY - BC.size/2) + 'px';
+                 let swayDeg = Math.sin(Date.now()/500)*5; 
+                 domBB.style.transform = `rotate(${swayDeg}deg)`;
+             }
         } else {
-            if(domBB) domBB.style.display = 'none';
+             if(domBB) domBB.style.display = 'none';
         }
-    } else {
-        // Tắt hết nếu ko phải boss fight
-        allDoms.forEach(d => { if(d) d.style.display = 'none'; });
-    }
+    } 
 
-    // Draw Bird
+    // --- LỚP 4: VẼ CHIM (Trên cùng) ---
     ctx.save();
     let scaleEffect = activeEffects.mini ? 0.5 : 1; 
     const cx = birdX + (BIRD_WIDTH * scaleEffect) / 2;
@@ -1115,7 +1141,6 @@ function draw() {
         let t = flapTimer / FLAP_DURATION; let ease = 1 - Math.pow(1 - t, 2);
         scaleX = 1 + (FLAP_SCALE_X - 1) * (1 - ease); scaleY = 1 - (1 - FLAP_SCALE_Y) * (1 - ease);
     }
-    
     let finalScale = activeEffects.mini ? 0.5 : 1;
     ctx.scale(scaleX * finalScale, scaleY * finalScale);
     ctx.drawImage(assets.bird, -BIRD_WIDTH/2, -BIRD_HEIGHT/2, BIRD_WIDTH, BIRD_HEIGHT);
@@ -1126,6 +1151,7 @@ function draw() {
         ctx.arc(birdX + BIRD_WIDTH/2, birdY + BIRD_HEIGHT/2, 40, 0, Math.PI*2); ctx.stroke();
     }
 }
+
 
 function gameLoop() {
     if (!gameRunning) return;
@@ -1473,14 +1499,13 @@ draw = function() {
         });
 
         // Vẽ Hitbox Ghost (Skill)
-        if (boss.events && (boss.events.ghostEnter || boss.state==='FIGHT')) {
+        if (boss.events && (boss.events.enter || boss.state==='FIGHT')) {
              const hbSkill = cfg.skill;
              let gx = boss.ghostX + hbSkill.dx - hbSkill.w/2;
              let gy = boss.ghostY + hbSkill.dy - hbSkill.h/2;
              ctx.strokeStyle = 'cyan';
              ctx.strokeRect(gx, gy, hbSkill.w, hbSkill.h);
-        }
-        
+        } 
         // Vẽ Hitbox Player
         ctx.strokeStyle = 'lime';
         const pCfg = cfg.player;
@@ -1517,7 +1542,48 @@ function showStatus(msg, color = 'lime') {
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { toastDiv.style.opacity = '0'; }, 2000);
 }
+function showSpecificWarning(type) {
+    const layer = document.getElementById('warningLayer');
+    if (!layer) return;
+    // Không xoá warning cũ để có thể hiện đè nếu muốn, 
+    // nhưng theo kịch bản này là hiện từng cái nên xoá trước cũng dc
+    layer.innerHTML = ''; 
 
+    // Config
+    const VIS = window.BOSS_VISUAL;
+    const S1 = VIS.snake1;
+    const S2 = VIS.snake2;
+    const BB = VIS.bigBoss;
+
+    let div = document.createElement('div');
+    div.className = 'danger-zone';
+
+    if (type === 'snake1') {
+        // Cảnh báo rắn trên
+        div.style.top = (S1.yPos - S1.headH/2) + 'px';
+        div.style.height = S1.headH + 'px';
+    } else if (type === 'snake2') {
+        // Cảnh báo rắn dưới
+        let y2 = (GAME_HEIGHT - S2.yPos) - S2.headH/2;
+        div.style.top = y2 + 'px';
+        div.style.height = S2.headH + 'px';
+    } else if (type === 'boss') {
+        // Cảnh báo Boss To
+        let by = GAME_HEIGHT * BB.posY;
+        div.style.top = (by - BB.size/2) + 'px';
+        div.style.height = BB.size + 'px';
+        
+        // Thêm chữ "BOSS" cho nguy hiểm
+        div.innerHTML = `<span style="color:red; font-size:3em; font-weight:bold; text-shadow:0 0 10px #000;">⚠️ MEGA BOSS ⚠️</span>`;
+    }
+    
+    layer.appendChild(div);
+}
+
+function clearWarnings() {
+    const layer = document.getElementById('warningLayer');
+    if(layer) layer.innerHTML = '';
+}
 // Lắng nghe sự kiện bàn phím
 document.addEventListener('keydown', (e) => {
     // 1. Phím TAB: Bật/Tắt Bảng Debug
