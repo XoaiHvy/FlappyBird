@@ -131,9 +131,10 @@ const BOSS_CFG = {
 // 3. Hàm kiểm tra va chạm AABB (Từ boss_logic.js)
 // Lưu ý: script.js đã có rectsIntersect (có chữ 's'), 
 // hàm này là rectIntersect (không 's') dùng riêng cho logic Boss để tránh lỗi.
-function rectIntersect(r1, r2) {
-    return !(r2.x > r1.x + r1.w || r2.x + r2.w < r1.x || r2.y > r1.y + r1.h || r2.y + r2.h < r1.y);
+function rectIntersect(a, b) {
+    return (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y);
 }
+
 // ============================================
 // --- BOSS CLASSES & LOGIC INTEGRATION ---
 // ============================================
@@ -159,19 +160,16 @@ class SnakeHead {
         this.direction = direction;
         this.velocity = 0;
         this.baseY = 0;
+        
+        // --- BIẾN MỚI: ĐỘ BAY LÊN ---
+        this.liftY = 0; 
+        // ---------------------------
 
-        this.updateConfig(); // Load config trước để có biến width
-
-        // QUAN TRỌNG: Tự động tính số đốt sao cho dài hơn màn hình 20%
-        // Để khi rắn trôi qua, màn hình lúc nào cũng đầy thân rắn
-        // +10 là để trừ hao cho các đoạn cong lượn sóng
-        const gap = window.BOSS_VISUAL[this.id===1?'snake1':'snake2'].gap || 920; // fallback tránh lỗi
+        this.updateConfig();
+        const gap = window.BOSS_VISUAL[this.id===1?'snake1':'snake2'].gap || 920; 
         this.segmentCount = Math.ceil(gameWidth / gap) + 10; 
-
-        // Đặt vị trí ban đầu (Lùi lại một chút để không thấy đuôi lúc đầu)
         this.resetPosition(gameWidth);
         
-        // Tạo đốt ngay
         this.segments = [];
         for(let i=0; i < this.segmentCount; i++) {
             let startX = this.headX - (i * this.width * this.direction);
@@ -181,23 +179,15 @@ class SnakeHead {
     
     updateConfig() {
         if (!window.BOSS_VISUAL) return;
-        // Lấy đúng key snake1 hoặc snake2
         const key = (this.id === 1) ? 'snake1' : 'snake2';
         const cfg = window.BOSS_VISUAL[key];
-        
         this.width = cfg.gap; 
-        
-        // Logic Y chuẩn: ID 1 tính từ trên xuống, ID 2 từ dưới lên
-        if (this.id === 1) this.baseY = cfg.yPos; 
-        else this.baseY = GAME_HEIGHT - cfg.yPos; 
+        if (this.id === 1) this.baseY = cfg.yPos; else this.baseY = GAME_HEIGHT - cfg.yPos; 
     }
     
     resetPosition(gw) {
-        // Đẩy thật xa (Gấp 5 lần độ rộng màn hình)
-        // Nếu màn hình 1920px -> đẩy ra 9000px
         let offset = Math.max(gw, 2000) * 1.5; 
-        if (this.direction === -1) this.headX = gw + offset; 
-        else this.headX = -offset;
+        if (this.direction === -1) this.headX = gw + offset; else this.headX = -offset;
     }
 
     activate() { 
@@ -209,60 +199,40 @@ class SnakeHead {
         this.updateConfig();
         if (!this.isActive) return;
 
-        // --- 1. CHO ĐẦU HIỆN TRỞ LẠI ---
+        // TẮT ĐẦU NẾU CẦN
         const elementId = (this.id === 1) ? 'domSnake1' : 'domSnake2';
         const domHead = document.getElementById(elementId);
-        
-        // --- 2. LOGIC DI CHUYỂN CHUẨN (KHÔNG CHẶN ĐƯỜNG NỮA) ---
-        // Cho rắn bay tự do theo vận tốc, không check if/else cản đường ở đây
-        this.headX += this.velocity * dt;
-        
-        let time = Date.now() * 0.002;
-        // Logic Y cơ bản (lên xuống)
-        this.y = this.baseY + Math.sin(time) * 8; 
-
-        // --- 3. LOGIC "BĂNG CHUYỀN" VÔ TẬN (SỬA LẠI) ---
-        // Thay vì đợi hết cả con rắn (dài ngoằng) mới reset -> Gây hổng lỗ toác
-        // Ta sẽ reset "Cuộn tròn" ngay khi cái đầu đi khuất màn hình bên kia
-        
-        const gap = this.width; // Khoảng cách giữa các đốt (thường là 900px)
-
-        if (this.direction === -1) { 
-            // SNAKE 1: Bay sang TRÁI (Top)
-            // Khi cái đầu rắn đã đi khuất hẳn màn hình bên trái (xa hơn 2 lần gap để chắc chắn)
-            // Ta dịch nó lùi lại 1 đoạn đúng bằng 1 đốt (gap) về phía phải
-            // => Giúp rắn trông như trôi vô tận mà đầu vẫn luôn ở ngoài màn hình
-            if (this.headX < -gap * 2) {
-                 this.headX += gap;
-            }
-        } else {
-            // SNAKE 2: Bay sang PHẢI (Bot)
-            // Tương tự, khi đi quá lố bên phải -> giật lùi lại bên trái 1 đốt
-            if (this.headX > currentWidth + gap * 2) {
-                 this.headX -= gap;
-            }
-        }
-
-        // --- 4. KÉO THÂN THEO ĐẦU ---
-        // (Tính lại tọa độ Y cho uốn lượn)
-        for (let i = 0; i < this.segments.length; i++) {
-            let seg = this.segments[i];
-            seg.x = this.headX - (i * this.width * this.direction);
-            
-            // Nếu muốn rắn uốn lượn đều mà không bị giật khi reset đầu
-            // Ta tính góc pha dựa trên vị trí X thực tế thay vì index i
-            // (Mẹo này giúp sóng không bị đứt đoạn)
-            let wavePhase = (seg.x * 0.002); 
-            seg.y = this.baseY + Math.sin(time + wavePhase) * 8; 
-        }
-        
-        // --- 5. TẮT HEAD (NẾU CẦN) ---
-        // Sau khi Intro xong (đầu rắn đã đi qua màn hình), bác có thể muốn ẩn cái đầu to đi
-        // để trông giống con rồng vô tận hơn. Nếu muốn giữ đầu thì xóa dòng if này đi.
-        // Logic: Nếu đầu rắn nằm ngoài vùng nhìn thấy -> ẩn nó đi cho đỡ rác DOM
         if (domHead) {
             let isOffScreen = (this.headX < -200) || (this.headX > currentWidth + 200);
             domHead.style.display = isOffScreen ? 'none' : 'block';
+        }
+
+        // DI CHUYỂN
+        this.headX += this.velocity * dt;
+        
+        let time = Date.now() * 0.002;
+        
+        // --- ÁP DỤNG BIẾN LIFT Y VÀO ĐÂY ---
+        // (BaseY + LiftY)
+        let finalBaseY = this.baseY + this.liftY;
+        this.y = finalBaseY + Math.sin(time) * 8; 
+        // ----------------------------------
+
+        // LOOP VÔ TẬN
+        const gap = this.width; 
+        if (this.direction === -1) { 
+            if (this.headX < -gap * 2) this.headX += gap;
+        } else {
+            if (this.headX > currentWidth + gap * 2) this.headX -= gap;
+        }
+
+        // KÉO THÂN
+        for (let i = 0; i < this.segments.length; i++) {
+            let seg = this.segments[i];
+            seg.x = this.headX - (i * this.width * this.direction);
+            let wavePhase = (seg.x * 0.002); 
+            // Áp dụng LiftY cho cả thân
+            seg.y = finalBaseY + Math.sin(time + wavePhase) * 8; 
         }
     }
 }
@@ -271,25 +241,18 @@ class SnakeHead {
 class BossController {
     constructor(w, h) {
         this.width = w; this.height = h;
-        // Bắt đầu đếm giờ từ 0
         this.timer = 0; 
-        
-        // Quản lý trạng thái Intro theo từng Phase (0,1,2,3,4) để không bao giờ bị lặp hay nhảy cóc
         this.introPhase = 0; 
-        
         this.visualHp = 0; 
         
-        // Setup 2 rắn con
+        // Khởi tạo rắn
         this.snakes = [ new SnakeHead(1, w, 0, -1), new SnakeHead(2, w, 0, 1) ];
-        // Khởi tạo Rắn con ở chế độ OFF, chưa chạy vội
         this.snakes.forEach(s => { s.isActive = false; }); 
 
-        // Config Boss To (Ban đầu giấu nó đi)
+        // Big Boss Config
         const BC = window.BOSS_VISUAL.bigBoss;
-        // Xuất phát từ rất xa bên phải
         this.ghostX = w + 800; 
         this.ghostY = h * BC.posY;
-        
         this.isLeaving = false; 
     }
 
@@ -297,11 +260,26 @@ class BossController {
         if (window.debugState.isBossFrozen) return; 
         this.timer += dt; 
 
-        // Luôn cập nhật rắn con (dù nó active hay chưa thì vẫn cần update logic vẽ)
+        // --- LOGIC ĐIỀU KHIỂN RẮN 1 (Lên / Xuống) ---
+        // 1. Bay lên: Từ giây thứ 5 (trước cảnh báo rắn dưới 1s) đến giây 13 (lúc boss ra)
+        // Mục đích: Né đường cho Rắn 2 ra mắt
+        if (this.timer > 5000 && this.timer < 13000) {
+            // Bay lên độ cao -400 (Biến mất khỏi nóc)
+            if (this.snakes[0].liftY > -400) {
+                this.snakes[0].liftY -= 5; // Tốc độ bay lên
+            }
+        } 
+        // 2. Bay về: Từ giây 13 trở đi hoặc lúc chưa đến giờ bay
+        else {
+            // Hạ cánh về 0 (Vị trí mặc định)
+            if (this.snakes[0].liftY < 0) {
+                this.snakes[0].liftY += 5; // Tốc độ hạ cánh
+            }
+        }
+        // --------------------------------------------
+
         this.snakes.forEach(s => s.update(dt, this.width));
 
-        // Logic Timeline Intro chuẩn
-        // Giai đoạn 0-16s là Intro. >16s là Fight.
         if (this.timer < 16000) {
             this.updateIntroLogic();
         } else {
@@ -312,53 +290,55 @@ class BossController {
     updateIntroLogic() {
         const t = this.timer;
 
-        // PHASE 1: RẮN TRÊN (0s -> 1s -> 6s)
+        // PHASE 1: RẮN TRÊN (0s -> 1s)
         if (t >= 0 && this.introPhase === 0) {
             showSpecificWarning('snake1');
-            this.introPhase = 1; // Xong việc 0s
+            this.introPhase = 1;
         }
         if (t >= 1000 && this.introPhase === 1) {
             clearWarnings();
-            this.snakes[0].activate(); // Snake 1 lao vào
-            this.introPhase = 2; // Xong việc 1s
+            this.snakes[0].activate(); 
+            this.introPhase = 2;
         }
 
-        // PHASE 2: RẮN DƯỚI (6s -> 7s -> 12s)
+        // PHASE 2: RẮN DƯỚI (6s -> 7s)
+        // Lưu ý: Lúc này ở hàm update(), Rắn 1 đã tự động bay lên từ giây thứ 5 rồi
         if (t >= 6000 && this.introPhase === 2) {
             showSpecificWarning('snake2');
             this.introPhase = 3;
         }
         if (t >= 7000 && this.introPhase === 3) {
             clearWarnings();
-            this.snakes[1].activate(); // Snake 2 lao vào
+            this.snakes[1].activate(); 
             this.introPhase = 4;
         }
 
-        // PHASE 3: BOSS TO (12s -> 13s -> 16s)
-        if (t >= 12000 && this.introPhase === 4) {
-            this.introPhase = 5;
-        }
-        if (t >= 13000 && this.introPhase === 5) {
+        // PHASE 3: BOSS TO (13s)
+        if (t >= 13000 && this.introPhase === 4) {
+            // Không hiện cảnh báo Boss nữa theo yêu cầu
             clearWarnings();
-            // Kích hoạt HP Fade In
+            
+            // Hiện HP Bar
             const bar = document.getElementById('bossHpBar');
             if(bar) bar.style.opacity = '1';
             
-            this.introPhase = 6; // Chuyển sang phase Animation
+            this.introPhase = 5; 
         }
 
-        // Animation bay vào từ từ (Từ 13s đến 16s)
+        // Animation Boss To (13s -> 16s)
+        // Lúc này Rắn 1 cũng đang tự động bay xuống (do timer > 13000)
         if (t >= 13000) {
             let targetX = this.width * window.BOSS_VISUAL.bigBoss.posX;
-            
-            // --- SỬA Ở ĐÂY: GIẢM TỪ 0.05 XUỐNG 0.015 ---
-            // Boss sẽ trôi vào cực chậm, tạo cảm giác khổng lồ và nặng nề
+            // Trôi chậm
             this.ghostX += (targetX - this.ghostX) * 0.015; 
-            
-            // Máu cũng bơm chậm lại cho khớp nhịp
             if(this.visualHp < 100) this.visualHp += 0.55; 
         }
-
+        
+        // Hết Intro
+        if (t >= 16000) {
+            this.state = 'FIGHT';
+            this.visualHp = 100;
+        }
     }
 
     updateFightLogic() {
@@ -367,30 +347,42 @@ class BossController {
         let targetY = this.height * BC.posY;
 
         if (!this.isLeaving) {
-            // -- CHIẾN ĐẤU --
-            // Giữ boss ở vị trí đã config, nhưng cho lắc lư nhẹ
+            // Chiến đấu: Boss rung rinh
             this.ghostX += (targetX - this.ghostX) * 0.1;
             this.ghostY += (targetY - this.ghostY) * 0.1;
         } else {
-            // -- RÚT LUI --
-            // Bay lên trời nhanh (Tăng tốc độ bay từ 10 -> 25 để nhìn rõ việc nó phóng đi)
+            // (Đoạn này thực tế bác đã bỏ qua việc boss bỏ chạy rồi, giữ lại để phòng hờ sau này bật lại)
             this.ghostY -= 15; 
-            // Hai con rắn con cũng phải bay theo chủ
             this.snakes.forEach(s => s.baseY -= 15);
-
-            // Kiểm tra nếu đã bay tít mù khơi thì reset game mode
-            if (this.ghostY < -1500) {
-                // Xóa boss -> Để vòng lặp game ở ngoài (crazyModeTimer) nhận biết và reset quy trình
-                endBossFight();
-            }
+            if (this.ghostY < -1500) { endBossFight(); }
         }
     }
     
-
     checkCollision(playerRect) { 
-        if (this.state !== 'FIGHT') return false;
-        // Copy lại logic collision cũ của bạn ở đây...
-        return false; // Tạm tắt death để test vị trí (Bật lại sau khi xong visual)
+        if (this.state !== 'FIGHT' && this.timer < 13000) return false;
+        
+        // Copy Logic Check cũ vào đây
+        for (let s of this.snakes) {
+            if (!s.isActive) continue;
+            const cfg = window.BOSS_VISUAL[(s.id === 1 ? 'snake1' : 'snake2')];
+            const hitboxW = cfg.bodyW * 0.8; const hitboxH = cfg.bodyH * 0.8; 
+            for (let seg of s.segments) {
+                // Áp dụng luôn cái liftY vào hitbox
+                // Note: Class SnakeHead đã cộng liftY vào seg.y rồi, nên ở đây lấy seg.y là chuẩn
+                const segRect = { x: seg.x - hitboxW/2, y: seg.y - hitboxH/2, w: hitboxW, h: hitboxH };
+                if (rectIntersect(playerRect, segRect)) return true;
+            }
+            const headW = cfg.headW * 0.6; const headH = cfg.headH * 0.6;
+            const headRect = { x: s.headX - headW/2, y: s.y - headH/2, w: headW, h: headH };
+            if (rectIntersect(playerRect, headRect)) return true;
+        }
+        if (this.state === 'FIGHT' || this.timer >= 12000) {
+            const BC = window.BOSS_VISUAL.bigBoss;
+            const bossSize = BC.size * 0.7; 
+            const bossRect = { x: this.ghostX - bossSize/2, y: this.ghostY - bossSize/2, w: bossSize, h: bossSize };
+            if (rectIntersect(playerRect, bossRect)) return true;
+        }
+        return false; 
     }
 }
 window.BossController = BossController;
