@@ -390,11 +390,12 @@ window.BossController = BossController;
 const assetsExtra = {
     shield: new Image(), 
     bomb: new Image(), 
-    potion: new Image(),
+    miniPotion: new Image(),
     boss1: new Image(), 
     boss2: new Image(),
     boss3: new Image(), 
     bullet: new Image(),
+    bossMusic: new Audio('assets/audio/music/LevBoss.mp3'),
 
     // --- CÁC ASSETS CHO BOSS ---
     // Sửa đường dẫn src thành 'assets/images/...' để khớp với thư mục của bạn
@@ -406,11 +407,16 @@ const assetsExtra = {
 };
 
 // Gán đường dẫn đúng (Thêm tiền tố "assets/images/" vào trước tên file)
+assetsExtra.shield.src = 'assets/images/shield_item.png'; 
+assetsExtra.bomb.src = 'assets/images/bomb_item.png';
+assetsExtra.miniPotion.src = 'assets/images/mini_potion.png';
 assetsExtra.snakeBody.src = 'assets/images/body.png';
 assetsExtra.bossFrame.src = 'assets/images/BossFrame.png';
 assetsExtra.player.src = 'assets/images/dragon.png';
 assetsExtra.bossFace.src = 'assets/images/head.gif';
 assetsExtra.bossFaceFlip.src = 'assets/images/head_flip.gif';
+assetsExtra.bossMusic.loop = true;
+assetsExtra.bossMusic.volume = 0.6;
 // Game Over Extra DOM
 const finalBestScoreDisplay = document.getElementById('finalBestScore');
 const newRecordMsg = document.getElementById('newRecordMsg');
@@ -538,9 +544,9 @@ const BIRD_SKINS = [
     { id: 'bird_nightfury',     name: 'Night Fury',     src: 'assets/images/nightfury_bird.png', jumpSound: 'assets/audio/sfx/wingflap.mp3' },
     { id: 'bird_lightfury',     name: 'Light Fury',     src: 'assets/images/lightfury_bird.png', jumpSound: 'assets/audio/sfx/wingflap.mp3' },
     { id: 'bird_bewilderbeast', name: 'Bewilderbeast',  src: 'assets/images/bewilderbeast_bird.png', jumpSound: 'assets/audio/sfx/wingflap.mp3' },
-    { id: 'bird_default',       name: 'Base Guts',       src: 'assets/images/bird.png' },
+    { id: 'bird_default',       name: 'Base Guts',       src: 'assets/images/bird.png', jumpSound: 'assets/audio/sfx/wingflap.mp3' }, 
     { if: 'bird_bckx',          name: 'BCKX',           src: 'assets/images/bckx_bird.png', jumpSound: 'assets/audio/sfx/kaiaku.mp3' },
-    { if: 'bird_thaidui',       name: 'Thái Dúi',       src: 'assets/images/bird_thaidui.png' }
+    { if: 'bird_thaidui',       name: 'Thái',       src: 'assets/images/bird_thaidui.png' }
 ];
 
 const MAP_SKINS = [
@@ -706,29 +712,49 @@ function resetGame() {
     score = 0;
     scoreDisplay.textContent = `Score: ${score}`;
     lastPipeSpawnTime = 0;
+    
+    // 1. Reset UI Overlays
     pauseOverlay.classList.remove('visible');
     gameOverOverlay.classList.remove('visible');
-    items = [];
-    isBossFight = false;
-    boss = null;
-    crazyModeTimer = 0; 
-    
-    // Reset hiệu ứng HP (Kiểm tra null trước cho an toàn)
-    if (bossHpBar) bossHpBar.style.display = 'none';
-    
-    // --- KHẮC PHỤC LỖI TẠI ĐÂY ---
-    // Code cũ: bossWarning.style.display = 'none'; 
-    // -> Bị lỗi vì thẻ bossWarning đã bị xóa khỏi HTML.
-    
-    // Code mới: Dọn sạch lớp cảnh báo mới
     const warningLayer = document.getElementById('warningLayer');
     if (warningLayer) warningLayer.innerHTML = '';
-    // ----------------------------
 
+    // 2. Reset Boss & Video
+    isBossFight = false;
+    boss = null;
+    crazyModeTimer = 0;
+    fadeState = 0; // Quan trọng: reset trạng thái chuyển cảnh
+    screenFadeAlpha = 0;
+
+    // Tắt video Boss, hiện lại video Map
+    const bv = document.getElementById('bossVideo');
+    if (bv) {
+        bv.style.display = 'none';
+        bv.style.opacity = '0';
+        bv.pause();
+    }
+    if (gameBgVideo) {
+        gameBgVideo.style.display = 'block';
+        gameBgVideo.style.opacity = '1';
+        gameBgVideo.currentTime = 0;
+        gameBgVideo.play().catch(() => {});
+    }
+
+    // 3. Quản lý Nhạc
+    if (assetsExtra.bossMusic) {
+    assetsExtra.bossMusic.pause();
+    assetsExtra.bossMusic.currentTime = 0;
+    }
+    if (currentMusicSrc) {
+        playBackgroundMusic(currentMusicSrc); // Chơi lại nhạc map
+    }
+
+    if (bossHpBar) bossHpBar.style.display = 'none';
     activeEffects = { shield: false, mini: false };
+    items = [];
     bossBullets = [];
-    screenFadeAlpha = 0; 
 }
+
 
 function jump() {
     if (!isPaused && !isGameOver) {
@@ -866,12 +892,26 @@ function updateBoss() {
 }
 
 function endBossFight() {
-    console.log("--- BOSS FIGHT ENDED ---");
+    console.log("--- BOSS DEFEATED ---");
     isBossFight = false;
     boss = null;
-    bossBullets = [];
-    crazyModeTimer = 0; // Reset vòng lặp boss
-    bossHpBar.style.display = 'none';
+    
+    // Chuyển lại nhạc
+    assetsExtra.bossMusic.pause();
+    if (currentMusicSrc) playBackgroundMusic(currentMusicSrc);
+
+    // Hiệu ứng mờ dần video boss để hiện lại map
+    const bv = document.getElementById('bossVideo');
+    if (bv) {
+        bv.style.opacity = '0';
+        setTimeout(() => { bv.style.display = 'none'; }, 1000);
+    }
+    if (gameBgVideo) {
+        gameBgVideo.style.display = 'block';
+        gameBgVideo.style.opacity = '1';
+    }
+    
+    if (bossHpBar) bossHpBar.style.display = 'none';
 }
 function update() {
     if (isPaused || isGameOver) return;
@@ -939,12 +979,15 @@ function update() {
             screenFadeAlpha += 0.01; 
             if (screenFadeAlpha >= 1) {
                 screenFadeAlpha = 1;
+
                 // Khi đã đen thui:
                 // 1. Tắt nền cũ, chuẩn bị nền mới (nhưng chưa hiện)
+                stopBackgroundMusic(); // Tắt nhạc Map hiện tại
+        assetsExtra.bossMusic.currentTime = 0; // Chạy từ đầu
+        assetsExtra.bossMusic.play().catch(e => console.log("Music error:", e));
                 if(gameBgVideo) gameBgVideo.style.display = 'none';
                 const bv = document.getElementById('bossVideo');
                 if(bv) { bv.style.display = 'block'; bv.style.opacity = '0'; bv.play().catch(()=>{}); } 
-
                 // 2. Gọi Boss ra (Timer = 0 -> Nó sẽ chạy Intro: Rắn 1 -> Rắn 2)
                 spawnBoss();
                 
@@ -1023,6 +1066,16 @@ function stopBackgroundMusic() {
     bgMusicPlayer.pause();
     bgMusicPlayer.currentTime = 0;
 }
+function toggleBossMusic(isOn) {
+    if (isOn) {
+        stopBackgroundMusic(); // Dừng nhạc map
+        assetsExtra.bossMusic.currentTime = 0;
+        assetsExtra.bossMusic.play();
+    } else {
+        assetsExtra.bossMusic.pause();
+        if (currentMusicSrc) playBackgroundMusic(currentMusicSrc); // Quay lại nhạc map
+    }
+}
 
 // Hàm phát tiếng nhảy
 function playJumpSound() {
@@ -1069,13 +1122,29 @@ function draw() {
         ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
     }
 
-    // --- LỚP 3: ITEMS & BOSS (NỔI TRÊN NỀN ĐEN) ---
-    if (currentMode === 'crazy') {
-        items.forEach(it => {
-            if (it.type === 'shield') ctx.fillStyle = 'cyan'; else if (it.type === 'bomb') ctx.fillStyle = 'red'; else ctx.fillStyle = 'green';
+ if (currentMode === 'crazy') {
+    items.forEach(it => {
+        let img = null;
+        
+        // Kiểm tra loại item để chọn đúng ảnh
+        if (it.type === 'shield') {
+            img = assetsExtra.shield;
+        } else if (it.type === 'bomb') {
+            img = assetsExtra.bomb;
+        } else if (it.type === 'mini') {
+            img = assetsExtra.miniPotion; // it.type là 'mini', nhưng ảnh ta đặt tên là miniPotion
+        }
+
+        // Nếu ảnh đã tải xong (img.complete) thì vẽ ảnh
+        if (img && img.complete && img.naturalWidth !== 0) {
+            ctx.drawImage(img, it.x, it.y, it.w, it.h);
+        } else {
+            // Nếu ảnh lỗi hoặc chưa kịp load, vẽ tạm khối màu (fallback) để không bị mất item
+            ctx.fillStyle = it.type === 'shield' ? 'cyan' : (it.type === 'bomb' ? 'red' : 'green');
             ctx.fillRect(it.x, it.y, it.w, it.h);
-        });
-    }
+        }
+    });
+}
 
     // Logic Boss
     if (currentMode === 'crazy' && boss && boss.snakes) {
@@ -1210,6 +1279,12 @@ function exitGameToMenu() {
     pipes = [];
     canvas.removeEventListener('click', jump);
     document.removeEventListener('keydown', handleKeyPress);
+     const bv = document.getElementById('bossVideo');
+    if (bv) {
+        bv.style.display = 'none';
+        bv.pause();
+    }
+    assetsExtra.bossMusic.pause();
     
     // 3. --- QUAN TRỌNG: RESET TRẠNG THÁI BOSS & CRAZY MODE ---
     boss = null;           // Xóa đối tượng BossController
